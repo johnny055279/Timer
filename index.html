@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-4bw+/aepP/YC94hEpVNVgiZdgIC5+VKNBQNGCHeKRQN+PtmoHDEXuppvnDJzQIu9" crossorigin="anonymous">
+
+</head>
+
+<body>
+    <div class="container text-center mt-5">
+        <div class="row align-items-center">
+            <div class="col">
+                <div class="card">
+                    <h5 class="card-header">Countdown timer</h5>
+                    <div class="card-body">
+                        <h1 class="mb-3 card-title display__time-left">00:00:00</h1>
+                        <div class="btn-group mb-3" role="group" aria-label="Basic outlined example">
+                            <button type="button" class="btn btn-outline-secondary" onclick="IncreaseTime(1)">+1
+                                min</button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="IncreaseTime(5)">+5
+                                mins</button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="Reset()">reset</button>
+                        </div>
+
+                        <div class="dropdown">
+                            <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown"
+                                aria-expanded="false">
+                                Beep
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#">Beep 1</a></li>
+                                <li><a class="dropdown-item" href="#">Beep 2</a></li>
+                                <li><a class="dropdown-item" href="#">Beep 3</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card">
+                    <h5 class="card-header">Death counter</h5>
+                    <div class="card-body">
+                        <h1 class="card-title">0</h1>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                To be continue...
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-HwwvtgBNo3bZJJLYd8oVXjrBZt8cqVSpeBNS5n7C8IVInixGAoxmnlMuBnhbgrkm"
+        crossorigin="anonymous"></script>
+    <script src="index.js"></script>
+</body>
+
+</html>
