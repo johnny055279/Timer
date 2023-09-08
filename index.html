@@ -11,44 +11,50 @@
 </head>
 
 <body>
-    <div class="container text-center mt-5">
+    <div class="container mt-5">
         <div class="row align-items-center">
             <div class="col">
                 <div class="card">
-                    <h5 class="card-header">Countdown timer</h5>
+                    <h5 class="card-header text-center" id="countdownTitle">Countdown timer</h5>
                     <div class="card-body">
-                        <h1 class="mb-3 card-title display__time-left">00:00:00</h1>
-                        <div class="btn-group mb-3" role="group" aria-label="Basic outlined example">
-                            <button type="button" class="btn btn-outline-secondary" onclick="IncreaseTime(1)">+1
-                                min</button>
-                            <button type="button" class="btn btn-outline-secondary" onclick="IncreaseTime(5)">+5
-                                mins</button>
-                            <button type="button" class="btn btn-outline-secondary" onclick="Reset()">reset</button>
+                        <h1 class="mb-3 card-title display__time-left text-center">00:00:00</h1>
+                        <div class="text-center">
+                            <div class="btn-group mb-3" role="group" aria-label="Basic outlined example">
+                                <button type="button" class="btn btn-outline-secondary" onclick="IncreaseTime(-5)">-5
+                                    mins</button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="IncreaseTime(5)">+5
+                                    mins</button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="Reset()">reset</button>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-9">
+                                <select id="beepSelect" class="form-select" aria-label="Default select example">
+                                    <option selected value="door_chime0.mp3">door_chime0</option>
+                                </select>
+                            </div>
+                            <div class="col-3">
+                                <h2 class="play-icon" onclick="playAudio()"><i class="fa-solid fa-play"></i></h2>
+                            </div>
                         </div>
 
-                        <div class="dropdown">
-                            <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown"
-                                aria-expanded="false">
-                                Beep
-                            </button>
-                            <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="#">Beep 1</a></li>
-                                <li><a class="dropdown-item" href="#">Beep 2</a></li>
-                                <li><a class="dropdown-item" href="#">Beep 3</a></li>
-                            </ul>
+                        <div class="mt-3 mb-3">
+                            <label for="exampleFormControlInput1" class="form-label">Title text</label>
+                            <input type="text" class="form-control" id="exampleFormControlInput1"
+                                onchange="UpdateTitle(value)">
                         </div>
                     </div>
                 </div>
             </div>
             <div class="col">
-                <div class="card">
+                <div class="card text-center">
                     <h5 class="card-header">Death counter</h5>
                     <div class="card-body">
                         <h1 class="card-title">0</h1>
                     </div>
                 </div>
             </div>
-            <div class="col">
+            <div class="col text-center">
                 To be continue...
             </div>
         </div>
@@ -57,6 +63,7 @@
         integrity="sha384-HwwvtgBNo3bZJJLYd8oVXjrBZt8cqVSpeBNS5n7C8IVInixGAoxmnlMuBnhbgrkm"
         crossorigin="anonymous"></script>
     <script src="index.js"></script>
+    <script src="https://kit.fontawesome.com/b8dd0a8716.js" crossorigin="anonymous"></script>
 </body>
 
 </html>
