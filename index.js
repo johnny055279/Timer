@@ -1,18 +1,17 @@
 const timeDisplay = document.querySelector('.display__time-left');
 const countDownTitleDisplay = document.querySelector('#countdownTitle');
 const beepSelector = document.getElementById('beepSelect');
-const audio = document.createElement("audio");
-var countDownDate = new Date();
+const audio = document.getElementById("audio");
 let canPlay = true;
 let then = Date.now();
-
+console.log(audio)
 let countdown = setInterval(() => {
     const secondsLeft = Math.round((then - Date.now()) / 1000);
     if (secondsLeft <= 0) {
         then = Date.now();
         timeDisplay.textContent = "00:00:00";
         if (canPlay) {
-            playAudio();
+            audio.play();
             canPlay = false;
         }
         return;
@@ -30,19 +29,22 @@ function displayTimeLeft(seconds) {
 
 function IncreaseTime(number) {
     then += number * 1000 * 60
+    if (Math.round((then - Date.now()) / 1000) < 0 && number < 0) {
+        canPlay = false;
+    }
     canPlay = true;
 }
 
 function Reset() {
     then = Date.now();
     timeDisplay.textContent = "00:00:00";
+    canPlay = false;
 }
 
 function UpdateTitle(text) {
     countDownTitleDisplay.textContent = text;
 }
 
-function playAudio() {
+function changeBeep() {
     audio.src = `beeps/${beepSelector.value}`;
-    audio.play();
 }
