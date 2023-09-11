@@ -1,22 +1,32 @@
 const timeDisplay = document.querySelector('.display__time-left');
 const countDownTitleDisplay = document.querySelector('#countdownTitle');
 const beepSelector = document.getElementById('beepSelect');
-const audio = document.getElementById("audio");
-let canPlay = true;
-let then = Date.now();
-console.log(audio)
-let countdown = setInterval(() => {
-    const secondsLeft = Math.round((then - Date.now()) / 1000);
-    if (secondsLeft <= 0) {
-        then = Date.now();
-        timeDisplay.textContent = "00:00:00";
-        if (canPlay) {
-            audio.play();
-            canPlay = false;
+const audio = document.getElementById('audio');
+var canPlay = true;
+var isPaused = false;
+var then = Date.now();
+var delay = 0;
+var countdown = setInterval(() => {
+    if (!isPaused) {
+        then += delay * 1000;
+        console.log(then);
+        const secondsLeft = Math.round((then - Date.now()) / 1000);
+        delay = 0;
+        if (secondsLeft <= 0) {
+            then = Date.now();
+            timeDisplay.textContent = '00:00:00';
+            if (canPlay) {
+                audio.play();
+                canPlay = false;
+                tempSecondsLeft = null;
+            }
+            return;
         }
-        return;
+        displayTimeLeft(secondsLeft);
     }
-    displayTimeLeft(secondsLeft);
+    else {
+        delay++;
+    }
 }, 1000)
 
 function displayTimeLeft(seconds) {
@@ -37,7 +47,7 @@ function IncreaseTime(number) {
 
 function Reset() {
     then = Date.now();
-    timeDisplay.textContent = "00:00:00";
+    timeDisplay.textContent = '00:00:00';
     canPlay = false;
 }
 
@@ -47,4 +57,10 @@ function UpdateTitle(text) {
 
 function changeBeep() {
     audio.src = `beeps/${beepSelector.value}`;
+}
+
+function SetPause() {
+    isPaused = !isPaused;
+    let btn = document.getElementById('pause-btn');
+    btn.innerText = isPaused ? 'Resume' : 'Pause';
 }
