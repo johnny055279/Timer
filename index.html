@@ -60,7 +60,17 @@
                     <h5 class="card-header editable-title" contenteditable="true" spellcheck="false"
                         aria-label="Death counter title">Death counter</h5>
                     <div class="card-body">
-                        <h1 class="card-title">0</h1>
+                        <h1 class="card-title" id="deathCount">0</h1>
+                        <div class="text-center">
+                            <div class="btn-group mt-3" role="group" aria-label="Death counter controls">
+                                <button type="button" class="btn btn-outline-secondary"
+                                    onclick="UpdateDeathCount(1)">+1</button>
+                                <button type="button" class="btn btn-outline-secondary"
+                                    onclick="UpdateDeathCount(-1)">-1</button>
+                                <button type="button" class="btn btn-outline-secondary"
+                                    onclick="ResetDeathCount()">Reset</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
