@@ -1,0 +1,10 @@
+.editable-title {
+    border: none;
+    cursor: text;
+}
+
+.editable-title:focus,
+.editable-title:focus-visible {
+    outline: none;
+    box-shadow: none;
+}
