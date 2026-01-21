@@ -1,0 +1,103 @@
+<Window x:Class="Timer.HelpDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Help"
+        Width="640"
+        Height="520"
+        MinWidth="480"
+        MinHeight="360"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResize">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <TextBlock Text="中文說明" FontSize="16" FontWeight="SemiBold" />
+                <TextBlock TextWrapping="Wrap" Margin="0,6,0,16">
+                    <Run Text="一、倒數計時器" FontWeight="SemiBold" />
+                    <LineBreak />
+                    <Run Text="• 標題可直接點擊並修改" />
+                    <LineBreak />
+                    <Run Text="• - mins / + mins 依據 Minutes step 增減" />
+                    <LineBreak />
+                    <Run Text="• Reset 可歸零；Pause 可暫停/恢復" />
+                    <LineBreak />
+                    <Run Text="• Select beep 可選提示音，Play 試聽，Browse 可選自訂音效" />
+                    <LineBreak />
+                    <LineBreak />
+                    <Run Text="二、計數器" FontWeight="SemiBold" />
+                    <LineBreak />
+                    <Run Text="• +1 / -1 依據 Step 增減" />
+                    <LineBreak />
+                    <Run Text="• Reset 可歸零" />
+                    <LineBreak />
+                    <Run Text="• Hotkeys 欄位點一下後，按鍵即可設定快捷鍵" />
+                    <LineBreak />
+                    <LineBreak />
+                    <Run Text="三、Twitch" FontWeight="SemiBold" />
+                    <LineBreak />
+                    <Run Text="• Connect Twitch 會自動開啟驗證頁面" />
+                    <LineBreak />
+                    <Run Text="• 驗證碼會顯示在畫面上，可按 Copy 複製" />
+                    <LineBreak />
+                    <Run Text="• Load rewards 讀取頻道點數獎勵，選擇後可建立映射" />
+                    <LineBreak />
+                    <Run Text="• Poll 可發起同意/不同意投票，結束後依結果增減時間" />
+                    <LineBreak />
+                    <LineBreak />
+                    <Run Text="注意事項" FontWeight="SemiBold" />
+                    <LineBreak />
+                    <Run Text="• 需要具備 Channel Points 的頻道才可載入 rewards" />
+                    <LineBreak />
+                    <Run Text="• 若出現連線問題，請先按 Reset Twitch 再重新 Connect" />
+                </TextBlock>
+
+                <TextBlock Text="English Guide" FontSize="16" FontWeight="SemiBold" />
+                <TextBlock TextWrapping="Wrap" Margin="0,6,0,0">
+                    <Run Text="1. Countdown Timer" FontWeight="SemiBold" />
+                    <LineBreak />
+                    <Run Text="• Click the title to edit it" />
+                    <LineBreak />
+                    <Run Text="• - mins / + mins adjust by Minutes step" />
+                    <LineBreak />
+                    <Run Text="• Reset sets to zero; Pause toggles" />
+                    <LineBreak />
+                    <Run Text="• Select beep to choose sound, Play to preview, Browse for custom audio" />
+                    <LineBreak />
+                    <LineBreak />
+                    <Run Text="2. Counter" FontWeight="SemiBold" />
+                    <LineBreak />
+                    <Run Text="• +1 / -1 adjust by Step" />
+                    <LineBreak />
+                    <Run Text="• Reset sets to zero" />
+                    <LineBreak />
+                    <Run Text="• Click a hotkey box, then press keys to set" />
+                    <LineBreak />
+                    <LineBreak />
+                    <Run Text="3. Twitch" FontWeight="SemiBold" />
+                    <LineBreak />
+                    <Run Text="• Connect Twitch automatically opens the verification page" />
+                    <LineBreak />
+                    <Run Text="• Verification code is shown on screen; click Copy" />
+                    <LineBreak />
+                    <Run Text="• Load rewards to read channel points and map minutes" />
+                    <LineBreak />
+                    <Run Text="• Start a poll and apply the result" />
+                    <LineBreak />
+                    <LineBreak />
+                    <Run Text="Notes" FontWeight="SemiBold" />
+                    <LineBreak />
+                    <Run Text="• Channel Points must be enabled to load rewards" />
+                    <LineBreak />
+                    <Run Text="• If connection issues occur, Reset Twitch and reconnect" />
+                </TextBlock>
+            </StackPanel>
+        </ScrollViewer>
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button Content="Close" MinWidth="80" Click="Close_Click" Margin="0" />
+        </StackPanel>
+    </Grid>
+</Window>
