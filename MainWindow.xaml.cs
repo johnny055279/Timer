@@ -1,6 +1,8 @@
 using System;
 using System.IO;
+using System.Globalization;
 using System.Linq;
+using System.Resources;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -13,7 +15,7 @@ namespace TimerWpf;
 
 public partial class MainWindow : Window
 {
-    private sealed record BeepOption(string DisplayName, string FullPath);
+    private sealed record BeepOption(string DisplayName, Uri SourceUri);
     private sealed record Hotkey(Key Key, ModifierKeys Modifiers);
 
     private readonly DispatcherTimer _timer;
@@ -53,22 +55,80 @@ public partial class MainWindow : Window
     private void LoadBeeps()
     {
         BeepComboBox.DisplayMemberPath = nameof(BeepOption.DisplayName);
-        if (!Directory.Exists(_beepsDirectory))
-        {
-            BeepComboBox.ItemsSource = Array.Empty<BeepOption>();
-            return;
-        }
-
-        var files = Directory.EnumerateFiles(_beepsDirectory)
-            .Where(file => file.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase)
-                           || file.EndsWith(".wav", StringComparison.OrdinalIgnoreCase))
-            .Select(path => new BeepOption(Path.GetFileName(path) ?? path, path))
+        var files = LoadEmbeddedBeeps()
+            .Concat(LoadExternalBeeps())
+            .GroupBy(option => option.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
             .ToList();
 
         BeepComboBox.ItemsSource = files;
         if (files.Count > 0)
         {
             BeepComboBox.SelectedIndex = 0;
+        }
+    }
+
+    private static System.Collections.Generic.IEnumerable<BeepOption> LoadEmbeddedBeeps()
+    {
+        var assembly = typeof(MainWindow).Assembly;
+        var resourceManager = new ResourceManager("Timer.g", assembly);
+        var resourceSet = resourceManager.GetResourceSet(CultureInfo.CurrentUICulture, true, true);
+        if (resourceSet is null)
+        {
+            yield break;
+        }
+
+        foreach (System.Collections.DictionaryEntry entry in resourceSet)
+        {
+            if (entry.Key is not string key)
+            {
+                continue;
+            }
+
+            if (!key.StartsWith("beeps/", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (!key.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase)
+                && !key.EndsWith(".wav", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var fileName = Path.GetFileName(key);
+            if (string.IsNullOrWhiteSpace(fileName))
+            {
+                continue;
+            }
+
+            var packUri = new Uri($"pack://application:,,,/{key}", UriKind.Absolute);
+            yield return new BeepOption(fileName, packUri);
+        }
+    }
+
+    private System.Collections.Generic.IEnumerable<BeepOption> LoadExternalBeeps()
+    {
+        if (!Directory.Exists(_beepsDirectory))
+        {
+            yield break;
+        }
+
+        foreach (var path in Directory.EnumerateFiles(_beepsDirectory))
+        {
+            if (!path.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase)
+                && !path.EndsWith(".wav", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var fileName = Path.GetFileName(path);
+            if (string.IsNullOrWhiteSpace(fileName))
+            {
+                continue;
+            }
+
+            yield return new BeepOption(fileName, new Uri(path, UriKind.Absolute));
         }
     }
 
@@ -524,30 +584,35 @@ public partial class MainWindow : Window
             return;
         }
 
-        var selection = new BeepOption(Path.GetFileName(dialog.FileName), dialog.FileName);
+        var selection = new BeepOption(Path.GetFileName(dialog.FileName), new Uri(dialog.FileName, UriKind.Absolute));
         var items = BeepComboBox.ItemsSource as System.Collections.Generic.IEnumerable<BeepOption>;
         var list = items?.ToList() ?? new System.Collections.Generic.List<BeepOption>();
-        if (list.All(item => !string.Equals(item.FullPath, selection.FullPath, StringComparison.OrdinalIgnoreCase)))
+        if (list.All(item => !Uri.Equals(item.SourceUri, selection.SourceUri)))
         {
             list.Add(selection);
         }
 
         BeepComboBox.ItemsSource = list;
         BeepComboBox.SelectedItem = list.FirstOrDefault(item =>
-            string.Equals(item.FullPath, selection.FullPath, StringComparison.OrdinalIgnoreCase));
+            Uri.Equals(item.SourceUri, selection.SourceUri));
         PlaySelectedBeep();
     }
 
     private void PlaySelectedBeep()
     {
-        var selectedPath = GetSelectedBeepPath();
-        if (string.IsNullOrWhiteSpace(selectedPath) || !File.Exists(selectedPath))
+        var selectedUri = GetSelectedBeepUri();
+        if (selectedUri is null)
+        {
+            return;
+        }
+
+        if (selectedUri.IsFile && !File.Exists(selectedUri.LocalPath))
         {
             return;
         }
 
         _player.Stop();
-        _player.Open(new Uri(selectedPath, UriKind.Absolute));
+        _player.Open(selectedUri);
         _player.Play();
     }
 
@@ -556,8 +621,8 @@ public partial class MainWindow : Window
         _player.Stop();
     }
 
-    private string? GetSelectedBeepPath()
+    private Uri? GetSelectedBeepUri()
     {
-        return BeepComboBox.SelectedItem is BeepOption option ? option.FullPath : null;
+        return BeepComboBox.SelectedItem is BeepOption option ? option.SourceUri : null;
     }
 }
