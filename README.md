@@ -13,6 +13,23 @@ Two-panel timer app built with .NET 10 WPF.
 dotnet run --project Timer.csproj
 ```
 
+## Publish (Self-contained single-file)
+```powershell
+dotnet publish -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true
+```
+
+Output:
+`bin/Release/net10.0-windows/win-x64/publish/`
+
+## Publish (Framework-dependent single-file)
+Smaller download size, but users must install the .NET Desktop Runtime.
+```powershell
+dotnet publish -c Release -r win-x64 --self-contained false /p:PublishSingleFile=true
+```
+
+Runtime download:
+https://dotnet.microsoft.com/download/dotnet/10.0
+
 ## Controls
 - Countdown: use "- mins" / "+ mins" to change the timer by the step value.
 - Step minutes: enter a positive number; a warning appears if empty or invalid.
