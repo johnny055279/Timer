@@ -9,9 +9,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="beeps\**\*">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    <Resource Include="beeps\**\*.mp3" />
+    <Resource Include="beeps\**\*.wav" />
   </ItemGroup>
 
 </Project>
