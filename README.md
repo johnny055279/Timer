@@ -13,19 +13,14 @@ Two-panel timer app built with .NET 10 WPF.
 dotnet run --project Timer.csproj
 ```
 
-## Publish (Self-contained single-file)
+## Publish (Framework-dependent, multi-file)
+Smaller download size, but users must install the .NET Desktop Runtime.
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true
+dotnet publish -c Release -r win-x64 --self-contained false /p:PublishSingleFile=false
 ```
 
 Output:
 `bin/Release/net10.0-windows/win-x64/publish/`
-
-## Publish (Framework-dependent single-file)
-Smaller download size, but users must install the .NET Desktop Runtime.
-```powershell
-dotnet publish -c Release -r win-x64 --self-contained false /p:PublishSingleFile=true
-```
 
 Runtime download:
 https://dotnet.microsoft.com/download/dotnet/10.0
