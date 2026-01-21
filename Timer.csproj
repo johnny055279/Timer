@@ -9,9 +9,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="..\beeps\**\*">
+    <Content Include="beeps\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>beeps\%(RecursiveDir)%(Filename)%(Extension)</Link>
     </Content>
   </ItemGroup>
 

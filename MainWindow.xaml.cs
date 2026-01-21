@@ -19,6 +19,7 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _timer;
     private readonly MediaPlayer _player = new();
     private readonly string _beepsDirectory;
+    private DateTimeOffset? _endTimeUtc;
     private TimeSpan _remaining = TimeSpan.Zero;
     private bool _isPaused;
     private bool _canPlay;
@@ -73,15 +74,16 @@ public partial class MainWindow : Window
 
     private void OnTimerTick(object? sender, EventArgs e)
     {
-        if (_isPaused || _remaining <= TimeSpan.Zero)
+        if (_isPaused || _endTimeUtc is null)
         {
             return;
         }
 
-        _remaining = _remaining.Subtract(TimeSpan.FromSeconds(1));
+        _remaining = _endTimeUtc.Value - DateTimeOffset.UtcNow;
         if (_remaining <= TimeSpan.Zero)
         {
             _remaining = TimeSpan.Zero;
+            _endTimeUtc = null;
             UpdateTimeDisplay();
             if (_canPlay)
             {
@@ -121,10 +123,21 @@ public partial class MainWindow : Window
 
     private void AdjustTime(int minutes)
     {
-        _remaining = _remaining.Add(TimeSpan.FromMinutes(minutes));
-        if (_remaining < TimeSpan.Zero)
+        var delta = TimeSpan.FromMinutes(minutes);
+        if (_isPaused || _endTimeUtc is null)
+        {
+            _remaining = _remaining.Add(delta);
+        }
+        else
+        {
+            _endTimeUtc = _endTimeUtc.Value.Add(delta);
+            _remaining = _endTimeUtc.Value - DateTimeOffset.UtcNow;
+        }
+
+        if (_remaining <= TimeSpan.Zero)
         {
             _remaining = TimeSpan.Zero;
+            _endTimeUtc = null;
         }
 
         _canPlay = _remaining > TimeSpan.Zero;
@@ -144,6 +157,7 @@ public partial class MainWindow : Window
     private void ResetCountdown_Click(object sender, RoutedEventArgs e)
     {
         _remaining = TimeSpan.Zero;
+        _endTimeUtc = null;
         _canPlay = false;
         UpdateTimeDisplay();
     }
@@ -151,7 +165,28 @@ public partial class MainWindow : Window
     private void Pause_Click(object sender, RoutedEventArgs e)
     {
         _isPaused = !_isPaused;
+        if (_isPaused)
+        {
+            if (_endTimeUtc is not null)
+            {
+                _remaining = _endTimeUtc.Value - DateTimeOffset.UtcNow;
+                if (_remaining < TimeSpan.Zero)
+                {
+                    _remaining = TimeSpan.Zero;
+                }
+                _endTimeUtc = null;
+            }
+        }
+        else
+        {
+            if (_remaining > TimeSpan.Zero)
+            {
+                _endTimeUtc = DateTimeOffset.UtcNow.Add(_remaining);
+                _canPlay = true;
+            }
+        }
         PauseButton.Content = _isPaused ? "Resume" : "Pause";
+        UpdateTimeDisplay();
     }
 
     private void IncreaseDeath_Click(object sender, RoutedEventArgs e)
