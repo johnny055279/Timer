@@ -43,6 +43,7 @@ public partial class MainWindow : Window
     private DebugLogWindow? _debugWindow;
     private TwitchWindow? _twitchWindow;
     private bool _isLoadingTitle;
+    private bool _isLoadingCounterTitle;
     private long _pendingMinutesDelta;
     private bool _updateChecked;
     private Hotkey _increaseHotkey = new(Key.Add, ModifierKeys.None);

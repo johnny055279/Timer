@@ -115,13 +115,15 @@
         <Border Grid.Column="1" CornerRadius="12" Background="#FFFDF8" Padding="16">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel>
-                <TextBox Text="Counter (計數器)"
-                             FontSize="18"
-                             FontWeight="SemiBold"
-                             BorderThickness="0"
-                             Background="Transparent"
-                             HorizontalAlignment="Center"
-                             TextAlignment="Center" />
+                <TextBox x:Name="CounterTitleTextBox"
+                         Text="Counter (計數器)"
+                         FontSize="18"
+                         FontWeight="SemiBold"
+                         BorderThickness="0"
+                         Background="Transparent"
+                         HorizontalAlignment="Center"
+                         TextAlignment="Center"
+                         TextChanged="CounterTitleTextBox_TextChanged" />
                 <TextBlock x:Name="CounterValueTextBlock"
                                Text="0"
                                FontSize="36"
