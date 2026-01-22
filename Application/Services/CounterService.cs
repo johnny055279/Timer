@@ -1,3 +1,4 @@
+using System;
 using Timer.Application.Interfaces;
 
 namespace Timer.Application.Services;
@@ -9,6 +10,11 @@ public sealed class CounterService : ICounterService
 
     public int Count => _count;
     public int Step => _step;
+
+    public void SetCount(int count)
+    {
+        _count = Math.Max(0, count);
+    }
 
     public void SetStep(int step)
     {

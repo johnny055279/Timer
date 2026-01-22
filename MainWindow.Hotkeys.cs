@@ -163,6 +163,7 @@ public partial class MainWindow
         {
             _counterService.Increase();
             UpdateCounterDisplay();
+            SaveSettings();
             e.Handled = true;
             return;
         }
@@ -171,6 +172,7 @@ public partial class MainWindow
         {
             _counterService.Decrease();
             UpdateCounterDisplay();
+            SaveSettings();
             e.Handled = true;
             return;
         }
@@ -179,6 +181,7 @@ public partial class MainWindow
         {
             _counterService.Reset();
             UpdateCounterDisplay();
+            SaveSettings();
             e.Handled = true;
         }
     }
