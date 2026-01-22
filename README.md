@@ -18,7 +18,7 @@ dotnet run --project Timer.csproj
 ## Publish (Framework-dependent, multi-file)
 Smaller download size, but users must install the .NET Desktop Runtime.
 ```powershell
-dotnet publish -c Release -r win-x64 --self-contained false /p:PublishSingleFile=false
+dotnet publish
 ```
 
 Output:
