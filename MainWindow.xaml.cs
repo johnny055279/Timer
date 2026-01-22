@@ -42,7 +42,6 @@ public partial class MainWindow : Window
     private readonly Version _currentVersion;
     private DebugLogWindow? _debugWindow;
     private TwitchWindow? _twitchWindow;
-    private bool _isLoadingSettings;
     private bool _isLoadingTitle;
     private long _pendingMinutesDelta;
     private bool _updateChecked;

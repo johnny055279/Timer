@@ -77,21 +77,18 @@ public partial class MainWindow
     {
         _counterService.Increase();
         UpdateCounterDisplay();
-        SaveSettings();
     }
 
     private void DecreaseCounter_Click(object sender, RoutedEventArgs e)
     {
         _counterService.Decrease();
         UpdateCounterDisplay();
-        SaveSettings();
     }
 
     private void ResetCounter_Click(object sender, RoutedEventArgs e)
     {
         _counterService.Reset();
         UpdateCounterDisplay();
-        SaveSettings();
     }
 
     private void UpdateCounterDisplay()
@@ -109,7 +106,6 @@ public partial class MainWindow
         _counterService.SetStep(GetCounterStep());
         UpdateCounterButtons();
         UpdateStepWarnings();
-        SaveSettings();
     }
 
     private void StepMinutesTextBox_TextChanged(object sender, TextChangedEventArgs e)
