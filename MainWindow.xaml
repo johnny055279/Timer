@@ -11,6 +11,7 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         <Border Background="#FFFDF8"
@@ -20,14 +21,39 @@
             <Grid>
                 <TextBlock Text="Timer (計時器)" FontWeight="SemiBold" FontSize="16" VerticalAlignment="Center" />
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Border x:Name="TwitchConnectedBadge"
+                            Background="#1B5E20"
+                            CornerRadius="10"
+                            Padding="8,4"
+                            Margin="0,0,12,0"
+                            VerticalAlignment="Center"
+                            Visibility="Collapsed">
+                        <TextBlock Text="Twitch connected"
+                                   Foreground="White"
+                                   FontSize="12"
+                                   FontWeight="SemiBold" />
+                    </Border>
                     <Button Content="Twitch (設定)" MinWidth="120" Click="TwitchButton_Click" />
                     <Button Content="Help (說明)" MinWidth="110" Click="HelpButton_Click" />
                     <Button Content="Debug (除錯)" MinWidth="110" Margin="0" Click="DebugButton_Click" />
                 </StackPanel>
             </Grid>
         </Border>
+        <Border x:Name="TwitchTokenWarningBorder"
+                Grid.Row="1"
+                Background="#FFF3CD"
+                BorderBrush="#FFECB5"
+                BorderThickness="1"
+                CornerRadius="6"
+                Margin="20,12,20,0"
+                Padding="12"
+                Visibility="Collapsed">
+            <TextBlock Text="Twitch not connected. Open Twitch settings to connect. (Twitch 未連線，請至設定連線)"
+                       Foreground="#664D03"
+                       FontWeight="SemiBold" />
+        </Border>
         <Grid x:Name="MainGrid"
-              Grid.Row="1"
+              Grid.Row="2"
               Margin="20"
               Background="Transparent">
             <Grid.ColumnDefinitions>
