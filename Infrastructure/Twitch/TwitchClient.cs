@@ -17,10 +17,12 @@ namespace Timer.Infrastructure.Twitch;
 
 public sealed class TwitchClient : ITwitchClient
 {
+    private const string DefaultEventSubWebSocketUrl = "wss://eventsub.wss.twitch.tv/ws";
     private sealed record TwitchToken(string AccessToken, string? RefreshToken, DateTimeOffset ExpiresAt);
     private static readonly string[] RequiredScopes =
     [
         "channel:read:redemptions",
+        "bits:read",
         "channel:read:polls",
         "channel:manage:polls"
     ];
@@ -28,22 +30,35 @@ public sealed class TwitchClient : ITwitchClient
     private readonly HttpClient _httpClient;
     private readonly WindowsCredentialStore _credentialStore;
     private readonly string _clientId;
+    private string _eventSubWebSocketUrl;
     private ClientWebSocket? _socket;
     private CancellationTokenSource? _cts;
     private string? _userId;
     private string? _displayName;
     private int _reconnectDelaySeconds = 2;
 
-    public TwitchClient(string clientId, HttpClient httpClient, WindowsCredentialStore credentialStore)
+    public TwitchClient(string clientId, HttpClient httpClient, WindowsCredentialStore credentialStore, string? eventSubWebSocketUrl = null)
     {
         _clientId = clientId;
         _httpClient = httpClient;
         _credentialStore = credentialStore;
+        _eventSubWebSocketUrl = string.IsNullOrWhiteSpace(eventSubWebSocketUrl)
+            ? DefaultEventSubWebSocketUrl
+            : eventSubWebSocketUrl;
+    }
+
+    public string EventSubWebSocketUrl
+    {
+        get => _eventSubWebSocketUrl;
+        set => _eventSubWebSocketUrl = string.IsNullOrWhiteSpace(value)
+            ? DefaultEventSubWebSocketUrl
+            : value.Trim();
     }
 
     public event EventHandler<string>? StatusChanged;
     public event EventHandler<(string UserCode, string VerifyUrl)>? DeviceCodeReceived;
     public event EventHandler<string>? RewardRedeemed;
+    public event EventHandler<int>? BitsCheered;
     public event EventHandler<string>? PollEnded;
 
     public async Task ConnectAsync()
@@ -169,6 +184,73 @@ public sealed class TwitchClient : ITwitchClient
         _cts?.Cancel();
         _socket?.Dispose();
         return Task.CompletedTask;
+    }
+
+    public void SimulateRewardRedeemed(string rewardId)
+    {
+        if (!string.IsNullOrWhiteSpace(rewardId))
+        {
+            RewardRedeemed?.Invoke(this, rewardId);
+        }
+    }
+
+    public void SimulateBitsCheered(int bits)
+    {
+        if (bits > 0)
+        {
+            BitsCheered?.Invoke(this, bits);
+        }
+    }
+
+    public async Task<bool> TryReconnectAsync()
+    {
+        var token = await LoadTokenAsync();
+        if (token is null)
+        {
+            return false;
+        }
+
+        if (token.ExpiresAt <= DateTimeOffset.UtcNow.AddMinutes(1))
+        {
+            token = await RefreshTokenAsync(token.RefreshToken);
+            if (token is null)
+            {
+                _credentialStore.Delete(TokenKey);
+                return false;
+            }
+        }
+
+        var hasScopes = await HasRequiredScopesAsync(token);
+        if (!hasScopes)
+        {
+            _credentialStore.Delete(TokenKey);
+            return false;
+        }
+
+        await EnsureUserAsync(token);
+        await ConnectEventSubAsync(token);
+        StatusChanged?.Invoke(this, _displayName is null ? "Connected" : $"Connected as {_displayName}");
+        return true;
+    }
+
+    public void NotifyStatus(string status)
+    {
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            StatusChanged?.Invoke(this, status);
+        }
+    }
+
+    public async Task<(bool HasToken, DateTimeOffset? ExpiresAt, bool HasRequiredScopes)> GetTokenStatusAsync()
+    {
+        var token = await LoadTokenAsync();
+        if (token is null)
+        {
+            return (false, null, false);
+        }
+
+        var hasScopes = await HasRequiredScopesAsync(token);
+        return (true, token.ExpiresAt, hasScopes);
     }
 
     private async Task<TwitchToken?> LoadTokenAsync()
@@ -391,7 +473,7 @@ public sealed class TwitchClient : ITwitchClient
         _cts = new CancellationTokenSource();
         _socket?.Dispose();
         _socket = new ClientWebSocket();
-        await _socket.ConnectAsync(new Uri("wss://eventsub.wss.twitch.tv/ws"), _cts.Token);
+        await _socket.ConnectAsync(new Uri(_eventSubWebSocketUrl), _cts.Token);
         _reconnectDelaySeconds = 2;
         _ = Task.Run(() => ReceiveEventSubLoopAsync(token, _socket, _cts.Token));
     }
@@ -476,6 +558,7 @@ public sealed class TwitchClient : ITwitchClient
     private async Task SubscribeEventSubAsync(TwitchToken token, string sessionId)
     {
         await SubscribeEventAsync(token, sessionId, "channel.channel_points_custom_reward_redemption.add");
+        await SubscribeEventAsync(token, sessionId, "channel.cheer");
         await SubscribeEventAsync(token, sessionId, "channel.poll.end");
     }
 
@@ -514,6 +597,17 @@ public sealed class TwitchClient : ITwitchClient
         {
             var rewardId = eventData.GetProperty("reward").GetProperty("id").GetString() ?? string.Empty;
             RewardRedeemed?.Invoke(this, rewardId);
+            return;
+        }
+
+        if (string.Equals(type, "channel.cheer", StringComparison.OrdinalIgnoreCase))
+        {
+            if (eventData.TryGetProperty("bits", out var bitsProperty)
+                && bitsProperty.ValueKind == JsonValueKind.Number)
+            {
+                BitsCheered?.Invoke(this, bitsProperty.GetInt32());
+            }
+
             return;
         }
 

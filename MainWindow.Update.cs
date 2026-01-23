@@ -24,6 +24,8 @@ public partial class MainWindow
         {
             // Ignore update failures to avoid blocking startup.
         }
+
+        _ = TryAutoConnectTwitchAsync();
     }
 
     private async Task CheckForUpdatesAsync()

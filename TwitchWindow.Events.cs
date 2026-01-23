@@ -13,12 +13,18 @@ public partial class TwitchWindow
             TwitchStatusTextBlock.Text = FormatStatus(status);
             if (status.StartsWith("Connected", StringComparison.OrdinalIgnoreCase))
             {
-                TwitchConnectPanel.Visibility = Visibility.Collapsed;
+                TwitchConnectPanel.Visibility = Visibility.Visible;
+                TwitchConnectButton.Visibility = Visibility.Collapsed;
+                TwitchResetButton.Visibility = Visibility.Visible;
+                TwitchVerificationCodePanel.Visibility = Visibility.Collapsed;
+                TwitchVerificationUrlPanel.Visibility = Visibility.Collapsed;
             }
             else if (status.Contains("expired", StringComparison.OrdinalIgnoreCase)
                      || status.Contains("failed", StringComparison.OrdinalIgnoreCase))
             {
                 TwitchConnectPanel.Visibility = Visibility.Visible;
+                TwitchConnectButton.Visibility = Visibility.Visible;
+                TwitchResetButton.Visibility = Visibility.Visible;
             }
         });
     }
@@ -29,6 +35,8 @@ public partial class TwitchWindow
         {
             TwitchUserCodeTextBlock.Text = data.UserCode;
             TwitchVerifyUrlTextBlock.Text = data.VerifyUrl;
+            TwitchVerificationCodePanel.Visibility = Visibility.Visible;
+            TwitchVerificationUrlPanel.Visibility = Visibility.Visible;
             Process.Start(new ProcessStartInfo(data.VerifyUrl) { UseShellExecute = true });
         });
     }

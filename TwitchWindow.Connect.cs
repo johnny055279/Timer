@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Windows;
 using Timer.Infrastructure.Security;
 
@@ -26,14 +26,20 @@ public partial class TwitchWindow
         }
     }
 
-    private void TwitchReset_Click(object sender, RoutedEventArgs e)
+    private async void TwitchReset_Click(object sender, RoutedEventArgs e)
     {
         var store = new WindowsCredentialStore();
         store.Delete(TwitchTokenKey);
+        await _twitchClient.DisconnectAsync();
         TwitchStatusTextBlock.Text = "Not connected (未連線)";
         TwitchUserCodeTextBlock.Text = string.Empty;
         TwitchVerifyUrlTextBlock.Text = string.Empty;
         TwitchConnectPanel.Visibility = Visibility.Visible;
+        TwitchConnectButton.Visibility = Visibility.Visible;
+        TwitchResetButton.Visibility = Visibility.Visible;
+        TwitchVerificationCodePanel.Visibility = Visibility.Collapsed;
+        TwitchVerificationUrlPanel.Visibility = Visibility.Collapsed;
+        _twitchClient.NotifyStatus("Not connected");
     }
 
     private void TwitchCopyCode_Click(object sender, RoutedEventArgs e)
