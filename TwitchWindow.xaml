@@ -2,25 +2,41 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Twitch Settings (Twitch 設定)"
-        Width="760"
+        Width="900"
         Height="760"
-        MinWidth="620"
+        MinWidth="760"
         MinHeight="600"
         WindowStartupLocation="CenterOwner"
         Background="#F6F2EA">
     <Grid Margin="20">
-        <Border CornerRadius="12" Background="#FFFDF8" Padding="16">
+        <Border x:Name="RootBorder"
+                CornerRadius="12"
+                Background="#FFFDF8"
+                Padding="16"
+                BorderThickness="1"
+                BorderBrush="#E9ECEF">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel>
+                    <Border x:Name="DebugModeBanner"
+                            Background="#B42318"
+                            CornerRadius="8"
+                            Padding="8"
+                            Margin="0,0,0,12"
+                            Visibility="Collapsed">
+                        <TextBlock Text="DEBUG MODE ENABLED"
+                                   Foreground="White"
+                                   FontWeight="SemiBold"
+                                   HorizontalAlignment="Center" />
+                    </Border>
                     <TextBlock Text="Twitch (Twitch)" FontWeight="SemiBold" Margin="0,0,0,6" />
                     <TextBlock x:Name="TwitchStatusTextBlock" Text="Not connected (未連線)" Margin="0,0,0,8" />
                     <StackPanel x:Name="TwitchConnectPanel">
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                             <Button x:Name="TwitchConnectButton" Content="Connect Twitch (連線)" MinWidth="150" Click="TwitchConnectButton_Click" />
-                            <Button Content="Reset Twitch (重置)" MinWidth="150" Click="TwitchReset_Click" Margin="0" />
+                            <Button x:Name="TwitchResetButton" Content="Reset Twitch (重置)" MinWidth="150" Click="TwitchReset_Click" Margin="0" />
                         </StackPanel>
 
-                        <StackPanel Margin="0,0,0,8">
+                        <StackPanel x:Name="TwitchVerificationCodePanel" Margin="0,0,0,8">
                             <TextBlock Text="Verification code (驗證碼)" />
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -34,7 +50,7 @@
                             </Grid>
                         </StackPanel>
 
-                        <StackPanel Margin="0,0,0,12">
+                        <StackPanel x:Name="TwitchVerificationUrlPanel" Margin="0,0,0,12">
                             <TextBlock Text="Verification URL (驗證網址)" />
                             <TextBlock x:Name="TwitchVerifyUrlTextBlock"
                                        TextWrapping="Wrap"
@@ -42,8 +58,30 @@
                         </StackPanel>
                     </StackPanel>
 
-                    <TextBlock Text="Channel points (redemptions) (小奇點兌換)" Margin="0,0,0,6" />
-                    <StackPanel Margin="0,0,0,10">
+                    <CheckBox x:Name="DebugModeCheckBox"
+                              Content="Debug mode (CLI EventSub)"
+                              Margin="0,0,0,6"
+                              Visibility="Collapsed"
+                              Checked="DebugModeCheckBox_Checked"
+                              Unchecked="DebugModeCheckBox_Unchecked" />
+                    <TextBlock x:Name="DebugModeHintTextBlock"
+                               Text="Uses ws://127.0.0.1:8080/ws"
+                               Foreground="#6C757D"
+                               Margin="0,0,0,12"
+                               Visibility="Collapsed" />
+                    <TextBlock x:Name="DebugTokenStatusTextBlock"
+                               Text="Token status: unknown"
+                               Foreground="#6C757D"
+                               Margin="0,0,0,12"
+                               Visibility="Collapsed" />
+
+                    <Border Background="#F8F3E8"
+                            CornerRadius="8"
+                            Padding="12"
+                            Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="Channel points (redemptions) (忠誠點數)" FontWeight="SemiBold" Margin="0,0,0,6" />
+                            <StackPanel Margin="0,0,0,10">
                         <StackPanel Orientation="Horizontal">
                             <Button Content="Load rewards (載入)" MinWidth="160" Click="TwitchLoadRewards_Click" />
                             <Button Content="Copy reward ID (複製)" MinWidth="190" Click="TwitchCopyRewardId_Click" Margin="0" />
@@ -52,9 +90,6 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="110" />
                                 <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="80" />
-                                <ColumnDefinition Width="140" />
                             </Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
@@ -62,59 +97,187 @@
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
                             <TextBlock Text="Reward (獎勵)" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" />
-                            <ComboBox x:Name="TwitchRewardsComboBox" Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" SelectionChanged="TwitchRewardsComboBox_SelectionChanged" />
-                            <ComboBox x:Name="TwitchRewardActionComboBox" Grid.Row="0" Grid.Column="2" MinWidth="120" HorizontalAlignment="Stretch" Margin="10,0,0,0" />
-                            <TextBox x:Name="TwitchRewardMinutesTextBox"
-                                     Grid.Row="0"
-                                     Grid.Column="3"
-                                     Margin="10,0,0,0"
-                                     MinWidth="60"
-                                     Text="1"
-                                     InputScope="Number"
-                                     PreviewTextInput="NumericOnly_PreviewTextInput"
-                                     PreviewKeyDown="NumericOnly_PreviewKeyDown" />
-                            <Button Content="Add (新增)" Grid.Row="0" Grid.Column="4" MinWidth="110" Click="TwitchAddRewardMapping_Click" Margin="0" />
+                            <WrapPanel Grid.Row="0" Grid.Column="1" HorizontalAlignment="Left">
+                                <ComboBox x:Name="TwitchRewardsComboBox"
+                                          MinWidth="220"
+                                          Margin="0,0,10,8"
+                                          SelectionChanged="TwitchRewardsComboBox_SelectionChanged" />
+                                <ComboBox x:Name="TwitchRewardTargetComboBox"
+                                          MinWidth="140"
+                                          Margin="0,0,10,8"
+                                          SelectionChanged="TwitchRewardTargetComboBox_SelectionChanged" />
+                                <ComboBox x:Name="TwitchRewardActionComboBox"
+                                          MinWidth="140"
+                                          Margin="0,0,10,8" />
+                                <TextBox x:Name="TwitchRewardMinutesTextBox"
+                                         MinWidth="80"
+                                         Margin="0,0,10,8"
+                                         Text="1"
+                                         InputScope="Number"
+                                         PreviewTextInput="NumericOnly_PreviewTextInput"
+                                         PreviewKeyDown="NumericOnly_PreviewKeyDown" />
+                                <Button Content="Add (新增)"
+                                        MinWidth="120"
+                                        Margin="0,0,0,8"
+                                        Click="TwitchAddRewardMapping_Click" />
+                            </WrapPanel>
 
                             <TextBlock Text="Reward ID (獎勵ID)" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Margin="0,8,0,0" />
                             <TextBox x:Name="TwitchRewardIdTextBox" Grid.Row="1" Grid.Column="1" Margin="0,8,0,0" IsReadOnly="True" HorizontalAlignment="Stretch" />
 
                             <TextBlock Text="Mappings (對應)" Grid.Row="2" Grid.Column="0" VerticalAlignment="Top" Margin="0,8,0,0" />
-                            <ListBox x:Name="TwitchRewardMappingsListBox" Grid.Row="2" Grid.Column="1" Margin="0,8,0,0" MinHeight="80" HorizontalAlignment="Stretch" />
-                            <Button Content="Remove (移除)" Grid.Row="2" Grid.Column="2" MinWidth="120" HorizontalAlignment="Left" Margin="10,8,0,0" Click="TwitchRemoveRewardMapping_Click" />
+                            <StackPanel Grid.Row="2" Grid.Column="1" Margin="0,8,0,0">
+                                <WrapPanel>
+                                    <ListBox x:Name="TwitchRewardMappingsListBox"
+                                             MinHeight="80"
+                                             MinWidth="320"
+                                             HorizontalAlignment="Stretch"
+                                             SelectionChanged="TwitchRewardMappingsListBox_SelectionChanged" />
+                                    <Button Content="Remove (移除)" MinWidth="120" Margin="10,0,0,0" Click="TwitchRemoveRewardMapping_Click" />
+                                </WrapPanel>
+                                <WrapPanel Margin="0,8,0,0" VerticalAlignment="Center">
+                                    <TextBlock Text="Selected:" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="DebugSelectedRewardTextBlock"
+                                               Text="None"
+                                               Foreground="#6C757D"
+                                               VerticalAlignment="Center" />
+                                    <Button x:Name="DebugTriggerRewardButton"
+                                            Content="Trigger (測試)"
+                                            MinWidth="120"
+                                            Margin="12,0,0,0"
+                                            Visibility="Collapsed"
+                                            Click="DebugTriggerRewardButton_Click" />
+                                </WrapPanel>
+                            </StackPanel>
                         </Grid>
-                    </StackPanel>
+                        <Button x:Name="DebugSimulateRewardButton"
+                                Content="Simulate reward redeem (測試觸發)"
+                                MinWidth="220"
+                                Margin="0,8,0,0"
+                                Visibility="Collapsed"
+                                Click="DebugSimulateRewardButton_Click" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
 
-                    <TextBlock Text="Polls (agree / disagree) (投票)" Margin="0,0,0,6" />
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="110" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="120" />
-                            <ColumnDefinition Width="160" />
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <TextBlock Text="Poll title (投票標題)" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" />
-                        <TextBox x:Name="TwitchPollTitleTextBox" Grid.Row="0" Grid.Column="1" Margin="0,0,0,4" HorizontalAlignment="Stretch" />
+                    <Border Background="#E8F1F5"
+                            CornerRadius="8"
+                            Padding="12"
+                            Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="Bits (小奇點)" FontWeight="SemiBold" Margin="0,0,0,6" />
+                            <Grid Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="110" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Text="Bits amount (小奇點數)" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" />
+                                <StackPanel Grid.Row="0" Grid.Column="1">
+                                    <WrapPanel HorizontalAlignment="Left">
+                                    <TextBox x:Name="TwitchBitsAmountTextBox"
+                                             MinWidth="120"
+                                             Margin="0,0,10,8"
+                                             Text="100"
+                                             InputScope="Number"
+                                             PreviewTextInput="NumericOnly_PreviewTextInput"
+                                             PreviewKeyDown="NumericOnly_PreviewKeyDown" />
+                                    <ComboBox x:Name="TwitchBitsTargetComboBox"
+                                              MinWidth="140"
+                                              Margin="0,0,10,8"
+                                              SelectionChanged="TwitchBitsTargetComboBox_SelectionChanged" />
+                                    <ComboBox x:Name="TwitchBitsActionComboBox"
+                                              MinWidth="140"
+                                              Margin="0,0,10,8" />
+                                    <TextBox x:Name="TwitchBitsValueTextBox"
+                                             MinWidth="80"
+                                             Margin="0,0,10,8"
+                                             Text="1"
+                                             InputScope="Number"
+                                             PreviewTextInput="NumericOnly_PreviewTextInput"
+                                             PreviewKeyDown="NumericOnly_PreviewKeyDown" />
+                                    </WrapPanel>
+                                    <Button Content="Add (新增)"
+                                            MinWidth="120"
+                                            Margin="0,0,0,8"
+                                            HorizontalAlignment="Left"
+                                            Click="TwitchAddBitsMapping_Click" />
+                                </StackPanel>
 
-                        <TextBlock Text="Minutes (分鐘)" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Margin="0,4,0,0" />
-                        <TextBox x:Name="TwitchPollMinutesTextBox"
-                                 Grid.Row="1"
-                                 Grid.Column="1"
-                                 Margin="0,4,0,0"
-                                 MinWidth="60"
-                                 Text="5"
-                                 InputScope="Number"
-                                 PreviewTextInput="NumericOnly_PreviewTextInput"
-                                 PreviewKeyDown="NumericOnly_PreviewKeyDown" />
-                        <ComboBox x:Name="TwitchPollActionComboBox" Grid.Row="1" Grid.Column="2" MinWidth="120" Margin="10,4,0,0" HorizontalAlignment="Stretch" />
-                        <Button Content="Start poll (開始)" Grid.Row="1" Grid.Column="3" MinWidth="130" Margin="10,4,0,0" Click="TwitchStartPoll_Click" />
+                                <TextBlock Text="Mappings (對應)" Grid.Row="1" Grid.Column="0" VerticalAlignment="Top" Margin="0,8,0,0" />
+                                <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,8,0,0">
+                                    <WrapPanel>
+                                        <ListBox x:Name="TwitchBitsMappingsListBox"
+                                                 MinHeight="80"
+                                                 MinWidth="320"
+                                                 HorizontalAlignment="Stretch"
+                                                 SelectionChanged="TwitchBitsMappingsListBox_SelectionChanged" />
+                                        <Button Content="Remove (移除)" MinWidth="120" Margin="10,0,0,0" Click="TwitchRemoveBitsMapping_Click" />
+                                    </WrapPanel>
+                                    <WrapPanel Margin="0,8,0,0" VerticalAlignment="Center">
+                                        <TextBlock Text="Selected:" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                        <TextBlock x:Name="DebugSelectedBitsTextBlock"
+                                                   Text="None"
+                                                   Foreground="#6C757D"
+                                                   VerticalAlignment="Center" />
+                                        <Button x:Name="DebugTriggerBitsButton"
+                                                Content="Trigger (測試)"
+                                                MinWidth="120"
+                                                Margin="12,0,0,0"
+                                                Visibility="Collapsed"
+                                                Click="DebugTriggerBitsButton_Click" />
+                                    </WrapPanel>
+                                </StackPanel>
+                            </Grid>
+                            <Button x:Name="DebugSimulateBitsButton"
+                                    Content="Simulate bits cheer (測試觸發)"
+                                    MinWidth="220"
+                                    Margin="0,8,0,0"
+                                    Visibility="Collapsed"
+                                    Click="DebugSimulateBitsButton_Click" />
+                        </StackPanel>
+                    </Border>
 
-                        <TextBlock x:Name="TwitchPollStatusTextBlock" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="4" Text="No poll started (尚未開始)" Margin="0,8,0,0" />
-                    </Grid>
+                    <Border Background="#EEF2F7"
+                            CornerRadius="8"
+                            Padding="12">
+                        <StackPanel>
+                            <TextBlock Text="Polls (agree / disagree) (投票)" FontWeight="SemiBold" Margin="0,0,0,6" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="110" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="120" />
+                                    <ColumnDefinition Width="160" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Text="Poll title (投票標題)" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" />
+                                <TextBox x:Name="TwitchPollTitleTextBox" Grid.Row="0" Grid.Column="1" Margin="0,0,0,4" HorizontalAlignment="Stretch" />
+
+                                <TextBlock Text="Minutes (分鐘)" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Margin="0,4,0,0" />
+                                <TextBox x:Name="TwitchPollMinutesTextBox"
+                                         Grid.Row="1"
+                                         Grid.Column="1"
+                                         Margin="0,4,0,0"
+                                         MinWidth="60"
+                                         Text="5"
+                                         InputScope="Number"
+                                         PreviewTextInput="NumericOnly_PreviewTextInput"
+                                         PreviewKeyDown="NumericOnly_PreviewKeyDown" />
+                                <ComboBox x:Name="TwitchPollActionComboBox" Grid.Row="1" Grid.Column="2" MinWidth="120" Margin="10,4,0,0" HorizontalAlignment="Stretch" />
+                                <Button Content="Start poll (開始)" Grid.Row="1" Grid.Column="3" MinWidth="130" Margin="10,4,0,0" Click="TwitchStartPoll_Click" />
+
+                                <TextBlock x:Name="TwitchPollStatusTextBlock" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="4" Text="No poll started (尚未開始)" Margin="0,8,0,0" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
             </ScrollViewer>
         </Border>

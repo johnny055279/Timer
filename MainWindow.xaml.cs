@@ -23,6 +23,8 @@ public partial class MainWindow : Window
 
     private const string TwitchClientId = "n1smqlrxyxbkyuvys846qjrq8fgcyh";
     private const string UpdateRepo = "johnny055279/Timer";
+    private const string DefaultEventSubWebSocketUrl = "wss://eventsub.wss.twitch.tv/ws";
+    private const string DebugEventSubWebSocketUrl = "ws://127.0.0.1:8080/ws";
     private const int MinStepMinutes = 1;
     private const int MaxStepMinutes = 120;
     private const int MinCounterStep = 1;
@@ -34,6 +36,7 @@ public partial class MainWindow : Window
     private readonly ITimerService _timerService;
     private readonly ICounterService _counterService;
     private readonly IRewardMappingService _rewardMappingService;
+    private readonly IBitsMappingService _bitsMappingService;
     private readonly IPollDecisionService _pollDecisionService;
     private readonly ITwitchClient _twitchClient;
     private readonly IAppSettingsStore _settingsStore;
@@ -46,6 +49,7 @@ public partial class MainWindow : Window
     private bool _isLoadingCounterTitle;
     private long _pendingMinutesDelta;
     private bool _updateChecked;
+    private bool _twitchAutoConnectAttempted;
     private Hotkey _increaseHotkey = new(Key.Add, ModifierKeys.None);
     private Hotkey _decreaseHotkey = new(Key.Subtract, ModifierKeys.None);
     private Hotkey _resetHotkey = new(Key.D0, ModifierKeys.None);
@@ -58,9 +62,24 @@ public partial class MainWindow : Window
         _timerService = new CountdownTimerService();
         _counterService = new CounterService();
         _rewardMappingService = new RewardMappingService();
+        _bitsMappingService = new BitsMappingService();
         _pollDecisionService = new PollDecisionService();
-        _twitchClient = new TwitchClient(TwitchClientId, new System.Net.Http.HttpClient(), new WindowsCredentialStore());
         _settingsStore = new JsonAppSettingsStore();
+        var settings = _settingsStore.Load();
+        var eventSubUrl = string.IsNullOrWhiteSpace(settings.EventSubWebSocketUrl)
+            ? DefaultEventSubWebSocketUrl
+            : settings.EventSubWebSocketUrl;
+#if DEBUG
+        if (settings.UseDebugEventSub)
+        {
+            eventSubUrl = DebugEventSubWebSocketUrl;
+        }
+#endif
+        _twitchClient = new TwitchClient(
+            TwitchClientId,
+            new System.Net.Http.HttpClient(),
+            new WindowsCredentialStore(),
+            eventSubUrl);
         _logService = new InMemoryLogService();
 
         _currentVersion = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(2, 1, 0, 0);
@@ -68,7 +87,9 @@ public partial class MainWindow : Window
             new GitHubUpdateService(UpdateRepo, $"Timer/{_currentVersion}"));
 
         _twitchClient.RewardRedeemed += (_, rewardId) => Dispatcher.Invoke(() => ApplyRewardAdjustment(rewardId));
+        _twitchClient.BitsCheered += (_, bits) => Dispatcher.Invoke(() => ApplyBitsAdjustment(bits));
         _twitchClient.PollEnded += (_, winnerTitle) => Dispatcher.Invoke(() => ApplyPollAdjustment(winnerTitle));
+        _twitchClient.StatusChanged += OnTwitchStatusChanged;
         _logService.LogAppended += OnLogAppended;
 
         LoadBeeps();

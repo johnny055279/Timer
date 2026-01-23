@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Timer.Application.Interfaces;
@@ -11,7 +12,7 @@ public sealed class RewardMappingService : IRewardMappingService
 
     public IReadOnlyList<TwitchRewardMapping> Mappings => _mappings;
 
-    public void AddOrUpdateMapping(TwitchReward reward, int minutes)
+    public void AddOrUpdateMapping(TwitchReward reward, TwitchRewardTarget target, TwitchRewardAction action, int minutes)
     {
         var existing = _mappings.FirstOrDefault(item =>
             string.Equals(item.RewardId, reward.Id, StringComparison.OrdinalIgnoreCase));
@@ -20,7 +21,19 @@ public sealed class RewardMappingService : IRewardMappingService
             _mappings.Remove(existing);
         }
 
-        _mappings.Add(new TwitchRewardMapping(reward.Id, reward.Title, minutes));
+        _mappings.Add(new TwitchRewardMapping(reward.Id, reward.Title, target, action, minutes));
+    }
+
+    public void ReplaceMappings(IEnumerable<TwitchRewardMapping> mappings)
+    {
+        _mappings.Clear();
+        foreach (var mapping in mappings)
+        {
+            if (!string.IsNullOrWhiteSpace(mapping.RewardId))
+            {
+                _mappings.Add(mapping);
+            }
+        }
     }
 
     public void RemoveMapping(TwitchRewardMapping mapping)
@@ -28,10 +41,10 @@ public sealed class RewardMappingService : IRewardMappingService
         _mappings.Remove(mapping);
     }
 
-    public int? TryGetDelta(string rewardId)
+    public TwitchRewardMapping? TryGetMapping(string rewardId)
     {
         var mapping = _mappings.FirstOrDefault(item =>
             string.Equals(item.RewardId, rewardId, StringComparison.OrdinalIgnoreCase));
-        return mapping?.Minutes;
+        return mapping;
     }
 }

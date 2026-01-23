@@ -44,12 +44,28 @@ public partial class MainWindow
             _twitchWindow = new TwitchWindow(
                 _twitchClient,
                 _rewardMappingService,
+                _bitsMappingService,
                 _pollDecisionService,
-                _logService)
+                _logService,
+                _settingsStore)
             {
                 Owner = this
             };
-            _twitchWindow.Closed += (_, _) => _twitchWindow = null;
+            _twitchWindow.Closed += (_, _) =>
+            {
+                _twitchWindow = null;
+                if (WindowState == WindowState.Minimized)
+                {
+                    WindowState = WindowState.Normal;
+                }
+
+                if (!IsVisible)
+                {
+                    Show();
+                }
+
+                Activate();
+            };
             _twitchWindow.Show();
             return;
         }
@@ -63,6 +79,7 @@ public partial class MainWindow
         Closed -= OnWindowClosed;
         Loaded -= OnWindowLoaded;
         _logService.LogAppended -= OnLogAppended;
+        _twitchClient.StatusChanged -= OnTwitchStatusChanged;
         _ = _twitchClient.DisconnectAsync();
     }
 }
