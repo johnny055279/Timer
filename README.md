@@ -8,24 +8,27 @@ Two-panel timer app (Countdown + Counter) built with .NET 10 WPF, plus a separat
 - Custom beep selection and playback.
 - Counter with adjustable step, reset, and hotkeys.
 - Twitch settings live in a separate window (top-right "Twitch (設定)").
-- Startup update check (opens GitHub release page if newer version is available).
+- Startup update check via Velopack — downloads and installs new versions in place (with a restart prompt), no manual download required.
 
 ## How to Run
 ```powershell
 dotnet run --project Timer.csproj
 ```
 
-## Publish (Framework-dependent, multi-file)
-Smaller download size, but users must install the .NET Desktop Runtime.
+## Publish (Velopack)
+Builds a framework-dependent win-x64 publish output, packages it with Velopack
+(installer + delta updates), and uploads it as a GitHub Release.
+
+Prereqs (one-time): `dotnet tool install -g vpk`
+
+Bump `<Version>` in `Timer.csproj` and `git tag <version>` matching it, then run:
 ```powershell
-dotnet publish
+./publish.ps1
 ```
 
-Output:
-`bin/Release/net10.0-windows/win-x64/publish/`
-
-Runtime download:
-https://dotnet.microsoft.com/download/dotnet/10.0
+First-time users run the generated `TimerSetup.exe`; the .NET Desktop Runtime
+installs automatically if missing. All later versions install automatically
+in-app.
 
 ## Controls
 - Countdown: use "- mins" / "+ mins" to change the timer by the step value.
@@ -49,4 +52,4 @@ https://dotnet.microsoft.com/download/dotnet/10.0
 ## Notes
 - The default beep is embedded in the app so it works without external files.
 - Browse uses external audio files and does not affect the embedded beep list.
-- Update check uses GitHub releases; it opens the release page but does not auto-install.
+- Update check uses Velopack + GitHub releases; it downloads and installs updates automatically after a confirmation prompt. Running via `dotnet run`/debug builds skips the check (nothing installed to update).
