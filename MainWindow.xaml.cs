@@ -1,17 +1,14 @@
 ﻿using System;
 using System.IO;
-using System.Reflection;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Timer.Application.Interfaces;
 using Timer.Application.Services;
-using Timer.Application.UseCases;
 using Timer.Infrastructure.Security;
 using Timer.Infrastructure.Settings;
 using Timer.Infrastructure.Twitch;
-using Timer.Infrastructure.Updates;
 using Timer.Utilities;
 
 namespace Timer;
@@ -22,7 +19,6 @@ public partial class MainWindow : Window
     private sealed record Hotkey(Key Key, ModifierKeys Modifiers);
 
     private const string TwitchClientId = "n1smqlrxyxbkyuvys846qjrq8fgcyh";
-    private const string UpdateRepo = "johnny055279/Timer";
     private const string DefaultEventSubWebSocketUrl = "wss://eventsub.wss.twitch.tv/ws";
     private const string DebugEventSubWebSocketUrl = "ws://127.0.0.1:8080/ws";
     private const int MinStepMinutes = 1;
@@ -41,8 +37,6 @@ public partial class MainWindow : Window
     private readonly ITwitchClient _twitchClient;
     private readonly IAppSettingsStore _settingsStore;
     private readonly ILogService _logService;
-    private readonly CheckForUpdatesUseCase _updateCheckUseCase;
-    private readonly Version _currentVersion;
     private DebugLogWindow? _debugWindow;
     private TwitchWindow? _twitchWindow;
     private bool _isLoadingTitle;
@@ -81,10 +75,6 @@ public partial class MainWindow : Window
             new WindowsCredentialStore(),
             eventSubUrl);
         _logService = new InMemoryLogService();
-
-        _currentVersion = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(2, 1, 0, 0);
-        _updateCheckUseCase = new CheckForUpdatesUseCase(
-            new GitHubUpdateService(UpdateRepo, $"Timer/{_currentVersion}"));
 
         _twitchClient.RewardRedeemed += (_, rewardId) => Dispatcher.Invoke(() => ApplyRewardAdjustment(rewardId));
         _twitchClient.BitsCheered += (_, bits) => Dispatcher.Invoke(() => ApplyBitsAdjustment(bits));

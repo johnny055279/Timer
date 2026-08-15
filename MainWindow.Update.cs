@@ -1,13 +1,15 @@
 using System;
-using System.Diagnostics;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using Velopack;
+using Velopack.Sources;
 
 namespace Timer;
 
 public partial class MainWindow
 {
+    private const string UpdateRepoUrl = "https://github.com/johnny055279/Timer";
+
     private async void OnWindowLoaded(object sender, RoutedEventArgs e)
     {
         if (_updateChecked)
@@ -30,18 +32,37 @@ public partial class MainWindow
 
     private async Task CheckForUpdatesAsync()
     {
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        var latest = await _updateCheckUseCase.ExecuteAsync(_currentVersion, cts.Token);
-        if (latest is null)
+        var mgr = new UpdateManager(new GithubSource(UpdateRepoUrl, null, false));
+        if (!mgr.IsInstalled)
         {
             return;
         }
 
-        var message = $"New version available ({latest.Version}). Open download page? (有新版本 {latest.Version}，是否前往下載頁？)";
-        var result = MessageBox.Show(this, message, "Update", MessageBoxButton.YesNo);
-        if (result == MessageBoxResult.Yes)
+        var checkTask = mgr.CheckForUpdatesAsync();
+        var winner = await Task.WhenAny(checkTask, Task.Delay(TimeSpan.FromSeconds(5)));
+        if (winner != checkTask)
         {
-            Process.Start(new ProcessStartInfo(latest.Url) { UseShellExecute = true });
+            return;
         }
+
+        var updateInfo = await checkTask;
+        if (updateInfo is null)
+        {
+            return;
+        }
+
+        var newVersion = updateInfo.TargetFullRelease.Version;
+        var promptMessage = $"New version available ({newVersion}). Download and install now? (有新版本 {newVersion}，是否立即下載並安裝？)";
+        if (MessageBox.Show(this, promptMessage, "Update", MessageBoxButton.YesNo) != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        await mgr.DownloadUpdatesAsync(updateInfo);
+
+        const string restartMessage = "Update downloaded. The app will now restart to finish installing. (更新已下載，程式即將重新啟動以完成安裝。)";
+        MessageBox.Show(this, restartMessage, "Update", MessageBoxButton.OK);
+
+        mgr.ApplyUpdatesAndRestart(updateInfo.TargetFullRelease);
     }
 }

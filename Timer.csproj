@@ -13,11 +13,21 @@
     <UseWPF>true</UseWPF>
     <ApplicationIcon>icons\icon.ico</ApplicationIcon>
     <IncludeNativeLibrariesForSelfExtract Condition="'$(SelfContained)' == 'true'">true</IncludeNativeLibrariesForSelfExtract>
+    <StartupObject>Timer.App</StartupObject>
   </PropertyGroup>
 
   <ItemGroup>
     <Resource Include="beeps\**\*.mp3" />
     <Resource Include="beeps\**\*.wav" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ApplicationDefinition Remove="App.xaml" />
+    <Page Include="App.xaml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Velopack" Version="1.2.0" />
   </ItemGroup>
 
   <Target Name="VerifyVersionMatchesGitTag" BeforeTargets="Publish">
@@ -29,14 +39,6 @@
              Text="HEAD has no git tag. Before creating the GitHub release, tag this commit to match &lt;Version&gt;$(Version)&lt;/Version&gt; in Timer.csproj (e.g. git tag $(Version)), otherwise the app will think a newer version is always available." />
     <Error Condition="'$(_GitExitCode)' == '0' And '@(_HeadTags)' != '' And '@(_HeadTags)' != '$(Version)'"
            Text="Timer.csproj &lt;Version&gt;$(Version)&lt;/Version&gt; does not match the git tag(s) on HEAD (@(_HeadTags)). Update &lt;Version&gt; (or re-tag) so the published build's embedded version matches the GitHub release tag." />
-  </Target>
-
-  <Target Name="ZipPublishOutput" AfterTargets="Publish">
-    <PropertyGroup>
-      <_ZipOutputPath>$(PublishDir)..\Timer.zip</_ZipOutputPath>
-    </PropertyGroup>
-    <Delete Files="$(_ZipOutputPath)" Condition="Exists('$(_ZipOutputPath)')" />
-    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -Command &quot;Compress-Archive -Path &apos;$(PublishDir)*&apos; -DestinationPath &apos;$(_ZipOutputPath)&apos; -Force&quot;" />
   </Target>
 
 </Project>
