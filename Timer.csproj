@@ -3,7 +3,7 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
-    <Version>2.1.0</Version>
+    <Version>2.1.2</Version>
     <Configuration Condition="'$(Configuration)' == ''">Release</Configuration>
     <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-x64</RuntimeIdentifier>
     <SelfContained>false</SelfContained>
@@ -19,6 +19,17 @@
     <Resource Include="beeps\**\*.mp3" />
     <Resource Include="beeps\**\*.wav" />
   </ItemGroup>
+
+  <Target Name="VerifyVersionMatchesGitTag" BeforeTargets="Publish">
+    <Exec Command="git tag --points-at HEAD" ConsoleToMSBuild="true" StandardOutputImportance="low" IgnoreExitCode="true">
+      <Output TaskParameter="ConsoleOutput" ItemName="_HeadTags" />
+      <Output TaskParameter="ExitCode" PropertyName="_GitExitCode" />
+    </Exec>
+    <Warning Condition="'$(_GitExitCode)' == '0' And '@(_HeadTags)' == ''"
+             Text="HEAD has no git tag. Before creating the GitHub release, tag this commit to match &lt;Version&gt;$(Version)&lt;/Version&gt; in Timer.csproj (e.g. git tag $(Version)), otherwise the app will think a newer version is always available." />
+    <Error Condition="'$(_GitExitCode)' == '0' And '@(_HeadTags)' != '' And '@(_HeadTags)' != '$(Version)'"
+           Text="Timer.csproj &lt;Version&gt;$(Version)&lt;/Version&gt; does not match the git tag(s) on HEAD (@(_HeadTags)). Update &lt;Version&gt; (or re-tag) so the published build's embedded version matches the GitHub release tag." />
+  </Target>
 
   <Target Name="ZipPublishOutput" AfterTargets="Publish">
     <PropertyGroup>
