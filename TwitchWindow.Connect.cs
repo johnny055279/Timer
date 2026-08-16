@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Windows;
-using Timer.Infrastructure.Security;
 
 namespace Timer;
 
@@ -28,9 +27,7 @@ public partial class TwitchWindow
 
     private async void TwitchReset_Click(object sender, RoutedEventArgs e)
     {
-        var store = new WindowsCredentialStore();
-        store.Delete(TwitchTokenKey);
-        await _twitchClient.DisconnectAsync();
+        await _twitchClient.RevokeAsync();
         TwitchStatusTextBlock.Text = "Not connected (未連線)";
         TwitchUserCodeTextBlock.Text = string.Empty;
         TwitchVerifyUrlTextBlock.Text = string.Empty;

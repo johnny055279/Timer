@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Timer"
         mc:Ignorable="d"
-        Title="Timer" Height="650" Width="1300" MinHeight="620" MinWidth="1100" Background="#F6F2EA"
+        Title="Timer" Height="650" SizeToContent="Width" ResizeMode="NoResize" Background="#F6F2EA"
         PreviewKeyDown="Window_PreviewKeyDown"
         PreviewMouseDown="Window_PreviewMouseDown">
     <Grid>

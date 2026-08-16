@@ -30,7 +30,7 @@ public sealed class TwitchClient : ITwitchClient
     private readonly HttpClient _httpClient;
     private readonly WindowsCredentialStore _credentialStore;
     private readonly string _clientId;
-    private string _eventSubWebSocketUrl;
+    private string _eventSubWebSocketUrl = DefaultEventSubWebSocketUrl;
     private ClientWebSocket? _socket;
     private CancellationTokenSource? _cts;
     private string? _userId;
@@ -42,17 +42,35 @@ public sealed class TwitchClient : ITwitchClient
         _clientId = clientId;
         _httpClient = httpClient;
         _credentialStore = credentialStore;
-        _eventSubWebSocketUrl = string.IsNullOrWhiteSpace(eventSubWebSocketUrl)
-            ? DefaultEventSubWebSocketUrl
-            : eventSubWebSocketUrl;
+        EventSubWebSocketUrl = eventSubWebSocketUrl ?? DefaultEventSubWebSocketUrl;
     }
 
     public string EventSubWebSocketUrl
     {
         get => _eventSubWebSocketUrl;
-        set => _eventSubWebSocketUrl = string.IsNullOrWhiteSpace(value)
-            ? DefaultEventSubWebSocketUrl
-            : value.Trim();
+        set => _eventSubWebSocketUrl = IsAllowedEventSubUrl(value)
+            ? value.Trim()
+            : DefaultEventSubWebSocketUrl;
+    }
+
+    // Only wss:// is trusted for a real Twitch connection; plain ws:// is allowed
+    // solely to loopback so the CLI debug workflow keeps working. This blocks a
+    // tampered settings.json (EventSubWebSocketUrl is stored in plaintext, not
+    // validated) from silently redirecting the socket to an attacker-controlled
+    // host that could then inject fake reward/bits/poll events.
+    private static bool IsAllowedEventSubUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url) || !Uri.TryCreate(url.Trim(), UriKind.Absolute, out var uri))
+        {
+            return false;
+        }
+
+        if (string.Equals(uri.Scheme, "wss", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return string.Equals(uri.Scheme, "ws", StringComparison.OrdinalIgnoreCase) && uri.IsLoopback;
     }
 
     public event EventHandler<string>? StatusChanged;
@@ -184,6 +202,31 @@ public sealed class TwitchClient : ITwitchClient
         _cts?.Cancel();
         _socket?.Dispose();
         return Task.CompletedTask;
+    }
+
+    public async Task RevokeAsync()
+    {
+        var token = await LoadTokenAsync();
+        if (token is not null)
+        {
+            try
+            {
+                using var revokeContent = new FormUrlEncodedContent(new[]
+                {
+                    new KeyValuePair<string, string>("client_id", _clientId),
+                    new KeyValuePair<string, string>("token", token.AccessToken)
+                });
+                await _httpClient.PostAsync("https://id.twitch.tv/oauth2/revoke", revokeContent);
+            }
+            catch
+            {
+                // Best-effort: still clear the local credential below even if
+                // Twitch's revoke endpoint is unreachable.
+            }
+        }
+
+        _credentialStore.Delete(TokenKey);
+        await DisconnectAsync();
     }
 
     public void SimulateRewardRedeemed(string rewardId)

@@ -19,6 +19,7 @@ public interface ITwitchClient
     Task<IReadOnlyList<TwitchReward>> LoadRewardsAsync();
     Task StartPollAsync(string title, int durationSeconds);
     Task DisconnectAsync();
+    Task RevokeAsync();
     void SimulateRewardRedeemed(string rewardId);
     void SimulateBitsCheered(int bits);
     Task<bool> TryReconnectAsync();
