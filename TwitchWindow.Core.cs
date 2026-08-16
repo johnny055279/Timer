@@ -14,7 +14,6 @@ public partial class TwitchWindow : Window
 {
     private const int MinMinutes = 1;
     private const int MaxMinutes = 120;
-    private const string TwitchTokenKey = "JohnnyTimerEventSubWPF.TwitchToken";
     private const string DefaultEventSubWebSocketUrl = "wss://eventsub.wss.twitch.tv/ws";
     private const string DebugEventSubWebSocketUrl = "ws://127.0.0.1:8080/ws";
     private static readonly Brush DefaultBorderBrush = new SolidColorBrush(Color.FromRgb(233, 236, 239));

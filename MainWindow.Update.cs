@@ -12,6 +12,8 @@ public partial class MainWindow
 
     private async void OnWindowLoaded(object sender, RoutedEventArgs e)
     {
+        LockWindowWidthToContent();
+
         if (_updateChecked)
         {
             return;
