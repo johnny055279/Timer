@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 
@@ -91,8 +92,14 @@ public partial class MainWindow
         var mapping = _bitsMappingService.TryGetMapping(bits);
         if (mapping is null)
         {
+            var configured = _bitsMappingService.Mappings.Count == 0
+                ? "none"
+                : string.Join(", ", _bitsMappingService.Mappings.Select(item => item.Bits));
+            _logService.LogInfo($"Bits {bits}: no mapping at or below this amount (configured: {configured}).");
             return;
         }
+
+        _logService.LogInfo($"Bits {bits}: applying {mapping.Display}.");
 
         if (mapping.Target == Timer.Domain.Entities.TwitchRewardTarget.Countdown)
         {
@@ -124,8 +131,11 @@ public partial class MainWindow
         var mapping = _rewardMappingService.TryGetMapping(rewardId);
         if (mapping is null)
         {
+            _logService.LogInfo($"Reward {rewardId}: no mapping.");
             return;
         }
+
+        _logService.LogInfo($"Reward {rewardId}: applying {mapping.Title} -> {mapping.Target} {mapping.Action} {mapping.Minutes}.");
 
         if (mapping.Target == Timer.Domain.Entities.TwitchRewardTarget.Countdown)
         {

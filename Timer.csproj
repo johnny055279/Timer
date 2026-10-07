@@ -3,7 +3,7 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
-    <Version>2.1.4</Version>
+    <Version>2.2.0</Version>
     <Configuration Condition="'$(Configuration)' == ''">Release</Configuration>
     <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-x64</RuntimeIdentifier>
     <SelfContained>false</SelfContained>
@@ -14,7 +14,14 @@
     <ApplicationIcon>icons\icon.ico</ApplicationIcon>
     <IncludeNativeLibrariesForSelfExtract Condition="'$(SelfContained)' == 'true'">true</IncludeNativeLibrariesForSelfExtract>
     <StartupObject>Timer.App</StartupObject>
+    <!-- Loki push URL for "Send to developer"; supplied at build time (env var or -p:)
+         so it stays out of the public repo. Empty = upload button hidden. -->
+    <LogUploadUrl Condition="'$(LogUploadUrl)' == ''">$(TIMER_LOG_UPLOAD_URL)</LogUploadUrl>
   </PropertyGroup>
+
+  <ItemGroup Condition="'$(LogUploadUrl)' != ''">
+    <AssemblyMetadata Include="LogUploadUrl" Value="$(LogUploadUrl)" />
+  </ItemGroup>
 
   <ItemGroup>
     <Resource Include="beeps\**\*.mp3" />
