@@ -19,7 +19,7 @@ dotnet run --project Timer.csproj
 Builds a framework-dependent win-x64 publish output, packages it with Velopack
 (installer + delta updates), and uploads it as a GitHub Release.
 
-Prereqs (one-time): `dotnet tool install -g vpk`
+Prereqs (one-time): `dotnet tool install -g vpk`, and `gh auth login` (or set `VPK_TOKEN`) for the upload
 
 Bump `<Version>` in `Timer.csproj` and `git tag <version>` matching it, then run:
 ```powershell
