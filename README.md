@@ -19,10 +19,11 @@ dotnet run --project Timer.csproj
 Builds a framework-dependent win-x64 publish output, packages it with Velopack
 (installer + delta updates), and uploads it as a GitHub Release.
 
-Prereqs (one-time): `dotnet tool install -g vpk`
+Prereqs (one-time): `dotnet tool install -g vpk`, and `gh auth login` (or set `VPK_TOKEN`) for the upload
 
 Bump `<Version>` in `Timer.csproj` and `git tag <version>` matching it, then run:
 ```powershell
+$env:TIMER_LOG_UPLOAD_URL = "https://<your-host>/loki/api/v1/push"   # optional, see Diagnostics
 ./publish.ps1
 ```
 
@@ -47,7 +48,19 @@ in-app.
 - Click "Load rewards" to list channel point rewards and map them to minutes.
 - Use "Start poll" to create an Agree/Disagree poll and apply the configured minutes.
 - Pick whether Agree means add or subtract using the poll action dropdown.
+- Bits mappings are thresholds: the highest mapping at or below the amount used applies
+  (with 100 and 500 configured, 250 bits triggers 100). Cheers and Power-ups both count
+  (EventSub `channel.bits.use`).
 - Tokens are stored in Windows Credential Manager under `JohnnyTimerEventSubWPF.TwitchToken`.
+
+## Diagnostics
+- Logs go to `%LocalAppData%\Timer\logs\timer-YYYYMMDD.log` (kept 7 days) and show in "Debug (除錯)".
+- "Send to developer" pushes the current session's log to a Loki-compatible endpoint
+  (e.g. Grafana Alloy `loki.source.api`) and shows a report ID; find it in Grafana with
+  `{app="timer", report_id="<ID>"}`.
+- The endpoint is baked in at build time from `TIMER_LOG_UPLOAD_URL` (or `-p:LogUploadUrl=`) and
+  is never committed. It must be `https` (plain `http` only to loopback). Builds without it hide
+  the button; "Open folder" still lets users send the file manually.
 
 ## Notes
 - The default beep is embedded in the app so it works without external files.

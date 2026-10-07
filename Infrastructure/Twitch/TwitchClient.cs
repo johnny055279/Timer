@@ -27,8 +27,12 @@ public sealed class TwitchClient : ITwitchClient
         "channel:manage:polls"
     ];
 
+    private const int MaxLoggedBodyChars = 500;
+    private const int MaxRememberedMessageIds = 500;
+
     private readonly HttpClient _httpClient;
     private readonly WindowsCredentialStore _credentialStore;
+    private readonly ILogService _logService;
     private readonly string _clientId;
     private string _eventSubWebSocketUrl = DefaultEventSubWebSocketUrl;
     private ClientWebSocket? _socket;
@@ -36,12 +40,22 @@ public sealed class TwitchClient : ITwitchClient
     private string? _userId;
     private string? _displayName;
     private int _reconnectDelaySeconds = 2;
+    private volatile bool _subscribeAuthFailed;
+    private readonly object _seenMessagesGate = new();
+    private readonly HashSet<string> _seenMessageIds = new(StringComparer.Ordinal);
+    private readonly Queue<string> _seenMessageOrder = new();
 
-    public TwitchClient(string clientId, HttpClient httpClient, WindowsCredentialStore credentialStore, string? eventSubWebSocketUrl = null)
+    public TwitchClient(
+        string clientId,
+        HttpClient httpClient,
+        WindowsCredentialStore credentialStore,
+        ILogService logService,
+        string? eventSubWebSocketUrl = null)
     {
         _clientId = clientId;
         _httpClient = httpClient;
         _credentialStore = credentialStore;
+        _logService = logService;
         EventSubWebSocketUrl = eventSubWebSocketUrl ?? DefaultEventSubWebSocketUrl;
     }
 
@@ -90,8 +104,9 @@ public sealed class TwitchClient : ITwitchClient
         }
 
         await EnsureUserAsync(token);
-        await ConnectEventSubAsync(token);
+        await ConnectEventSubAsync();
 
+        _logService.LogInfo($"Twitch connected as {_displayName ?? "(unknown)"}.");
         StatusChanged?.Invoke(this, _displayName is null ? "Connected" : $"Connected as {_displayName}");
     }
 
@@ -250,6 +265,7 @@ public sealed class TwitchClient : ITwitchClient
         var token = await LoadTokenAsync();
         if (token is null)
         {
+            _logService.LogInfo("Twitch auto-connect skipped: no saved token.");
             return false;
         }
 
@@ -258,6 +274,7 @@ public sealed class TwitchClient : ITwitchClient
             token = await RefreshTokenAsync(token.RefreshToken);
             if (token is null)
             {
+                _logService.LogWarning("Twitch auto-connect failed: token refresh failed.");
                 _credentialStore.Delete(TokenKey);
                 return false;
             }
@@ -266,12 +283,14 @@ public sealed class TwitchClient : ITwitchClient
         var hasScopes = await HasRequiredScopesAsync(token);
         if (!hasScopes)
         {
+            _logService.LogWarning("Twitch auto-connect failed: token is invalid or missing scopes.");
             _credentialStore.Delete(TokenKey);
             return false;
         }
 
         await EnsureUserAsync(token);
-        await ConnectEventSubAsync(token);
+        await ConnectEventSubAsync();
+        _logService.LogInfo($"Twitch auto-connected as {_displayName ?? "(unknown)"}.");
         StatusChanged?.Invoke(this, _displayName is null ? "Connected" : $"Connected as {_displayName}");
         return true;
     }
@@ -303,6 +322,20 @@ public sealed class TwitchClient : ITwitchClient
             var json = _credentialStore.Read(TokenKey);
             return string.IsNullOrWhiteSpace(json) ? null : JsonSerializer.Deserialize<TwitchToken>(json);
         });
+    }
+
+    // Background-safe variant of EnsureTokenAsync: refreshes an expiring token but
+    // never starts the interactive device flow; returns null when the user must reconnect.
+    private async Task<TwitchToken?> LoadValidTokenAsync()
+    {
+        var token = await LoadTokenAsync();
+        if (token is null || token.ExpiresAt > DateTimeOffset.UtcNow.AddMinutes(1))
+        {
+            return token;
+        }
+
+        _logService.LogInfo("Twitch token expiring; refreshing.");
+        return await RefreshTokenAsync(token.RefreshToken);
     }
 
     private async Task SaveTokenAsync(TwitchToken token)
@@ -435,6 +468,8 @@ public sealed class TwitchClient : ITwitchClient
         var payload = await tokenResponse.Content.ReadAsStringAsync();
         if (!tokenResponse.IsSuccessStatusCode)
         {
+            // The error body only carries status/message, never token material.
+            _logService.LogWarning($"Twitch token refresh failed: {(int)tokenResponse.StatusCode} {Truncate(payload)}");
             return null;
         }
 
@@ -510,18 +545,21 @@ public sealed class TwitchClient : ITwitchClient
         _displayName = user.GetProperty("display_name").GetString();
     }
 
-    private async Task ConnectEventSubAsync(TwitchToken token)
+    private async Task ConnectEventSubAsync()
     {
         _cts?.Cancel();
-        _cts = new CancellationTokenSource();
+        var cts = new CancellationTokenSource();
+        _cts = cts;
         _socket?.Dispose();
-        _socket = new ClientWebSocket();
-        await _socket.ConnectAsync(new Uri(_eventSubWebSocketUrl), _cts.Token);
+        var socket = new ClientWebSocket();
+        _socket = socket;
+        _logService.LogInfo($"EventSub connecting to {_eventSubWebSocketUrl}.");
+        await socket.ConnectAsync(new Uri(_eventSubWebSocketUrl), cts.Token);
         _reconnectDelaySeconds = 2;
-        _ = Task.Run(() => ReceiveEventSubLoopAsync(token, _socket, _cts.Token));
+        _ = Task.Run(() => ReceiveEventSubLoopAsync(socket, cts.Token));
     }
 
-    private async Task ReceiveEventSubLoopAsync(TwitchToken token, ClientWebSocket socket, CancellationToken ct)
+    private async Task ReceiveEventSubLoopAsync(ClientWebSocket socket, CancellationToken ct)
     {
         var buffer = new byte[1024 * 8];
         var builder = new StringBuilder();
@@ -537,25 +575,28 @@ public sealed class TwitchClient : ITwitchClient
                     result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), ct);
                     if (result.MessageType == WebSocketMessageType.Close)
                     {
+                        // Twitch's close code says why, e.g. 4003 = nothing subscribed in time.
+                        _logService.LogWarning($"EventSub closed by server: {(int?)result.CloseStatus} {result.CloseStatusDescription}");
                         await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed", ct);
-                        await ScheduleReconnectAsync(token);
+                        await ScheduleReconnectAsync();
                         return;
                     }
 
                     builder.Append(Encoding.UTF8.GetString(buffer, 0, result.Count));
                 } while (!result.EndOfMessage);
 
-                HandleEventSubMessage(token, builder.ToString());
+                HandleEventSubMessage(builder.ToString());
             }
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
+            _logService.LogError("EventSub connection lost.", ex);
             StatusChanged?.Invoke(this, $"Twitch disconnected: {ex.Message}");
-            await ScheduleReconnectAsync(token);
+            await ScheduleReconnectAsync();
         }
     }
 
-    private void HandleEventSubMessage(TwitchToken token, string json)
+    private void HandleEventSubMessage(string json)
     {
         try
         {
@@ -572,37 +613,88 @@ public sealed class TwitchClient : ITwitchClient
             {
                 case "session_welcome":
                     var sessionId = root.GetProperty("payload").GetProperty("session").GetProperty("id").GetString();
+                    _logService.LogInfo("EventSub session started.");
                     if (!string.IsNullOrWhiteSpace(sessionId))
                     {
-                        _ = Task.Run(() => SubscribeEventSubAsync(token, sessionId));
+                        _ = Task.Run(() => SubscribeEventSubAsync(sessionId));
                     }
                     break;
                 case "session_reconnect":
                     var reconnectUrl = root.GetProperty("payload").GetProperty("session").GetProperty("reconnect_url").GetString();
+                    _logService.LogInfo("EventSub asked to reconnect.");
                     if (!string.IsNullOrWhiteSpace(reconnectUrl))
                     {
-                        _ = Task.Run(() => ReconnectEventSubAsync(token, reconnectUrl));
+                        _ = Task.Run(() => ReconnectEventSubAsync(reconnectUrl));
                     }
                     break;
                 case "session_keepalive":
-                    StatusChanged?.Invoke(this, "Twitch connected");
+                    // After a subscribe was rejected for auth, don't let the keepalive flip
+                    // the status back to "connected": the socket is up but no events will come.
+                    if (!_subscribeAuthFailed)
+                    {
+                        StatusChanged?.Invoke(this, "Twitch connected");
+                    }
                     break;
                 case "notification":
+                    var messageId = metadata.TryGetProperty("message_id", out var messageIdProperty)
+                        ? messageIdProperty.GetString()
+                        : null;
+                    if (!string.IsNullOrEmpty(messageId) && !TryMarkMessageSeen(messageId))
+                    {
+                        _logService.LogWarning($"Duplicate EventSub notification ignored ({messageId}).");
+                        break;
+                    }
+
                     HandleEventSubNotification(root);
+                    break;
+                case "revocation":
+                    var revoked = root.GetProperty("payload").GetProperty("subscription");
+                    _logService.LogWarning($"EventSub subscription revoked: {revoked.GetProperty("type").GetString()} ({revoked.GetProperty("status").GetString()}).");
                     break;
             }
         }
         catch (Exception ex)
         {
+            _logService.LogError("EventSub message parse failed.", ex);
             StatusChanged?.Invoke(this, $"Event parse error: {ex.Message}");
         }
     }
 
-    private async Task SubscribeEventSubAsync(TwitchToken token, string sessionId)
+    private async Task SubscribeEventSubAsync(string sessionId)
     {
-        await SubscribeEventAsync(token, sessionId, "channel.channel_points_custom_reward_redemption.add");
-        await SubscribeEventAsync(token, sessionId, "channel.cheer");
-        await SubscribeEventAsync(token, sessionId, "channel.poll.end");
+        // Session IDs from the Twitch CLI mock server mean nothing to the real Helix
+        // API; the CLI debug workflow pushes forced triggers without subscribing.
+        if (IsLoopbackEventSub())
+        {
+            _logService.LogInfo("EventSub debug server: skipping Helix subscriptions.");
+            return;
+        }
+
+        try
+        {
+            // Re-read the token on every welcome. Reconnects used to subscribe with the
+            // token captured at connect time; hours into a stream it had expired, every
+            // subscribe got a 401, and the status still read "connected".
+            var token = await LoadValidTokenAsync();
+            if (token is null)
+            {
+                _subscribeAuthFailed = true;
+                _logService.LogWarning("EventSub subscribe skipped: no valid Twitch token.");
+                StatusChanged?.Invoke(this, "Twitch authorization expired. Please reconnect.");
+                return;
+            }
+
+            _subscribeAuthFailed = false;
+            await SubscribeEventAsync(token, sessionId, "channel.channel_points_custom_reward_redemption.add");
+            // channel.bits.use covers chat cheers and Power-ups; channel.cheer only sees cheers.
+            await SubscribeEventAsync(token, sessionId, "channel.bits.use");
+            await SubscribeEventAsync(token, sessionId, "channel.poll.end");
+        }
+        catch (Exception ex)
+        {
+            _logService.LogError("EventSub subscribe failed.", ex);
+            StatusChanged?.Invoke(this, $"EventSub subscribe failed: {ex.Message}");
+        }
     }
 
     private async Task SubscribeEventAsync(TwitchToken token, string sessionId, string type)
@@ -620,13 +712,28 @@ public sealed class TwitchClient : ITwitchClient
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token.AccessToken);
         request.Headers.Add("Client-Id", _clientId);
         request.Content = new StringContent(json, Encoding.UTF8, "application/json");
-        var response = await _httpClient.SendAsync(request);
-        if (!response.IsSuccessStatusCode)
+        using var response = await _httpClient.SendAsync(request);
+        if (response.IsSuccessStatusCode)
         {
-            var bodyText = await response.Content.ReadAsStringAsync();
-            StatusChanged?.Invoke(this, $"EventSub subscribe failed: {response.StatusCode}");
-            Debug.WriteLine(bodyText);
+            _logService.LogInfo($"EventSub subscribed: {type}.");
+            return;
         }
+
+        // 409 = already exists, e.g. carried over by a session_reconnect.
+        if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
+        {
+            _logService.LogInfo($"EventSub already subscribed: {type}.");
+            return;
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            _subscribeAuthFailed = true;
+        }
+
+        var bodyText = await response.Content.ReadAsStringAsync();
+        _logService.LogWarning($"EventSub subscribe failed: {type} {(int)response.StatusCode} {Truncate(bodyText)}");
+        StatusChanged?.Invoke(this, $"EventSub subscribe failed: {response.StatusCode}");
     }
 
     private void HandleEventSubNotification(JsonElement root)
@@ -638,17 +745,33 @@ public sealed class TwitchClient : ITwitchClient
 
         if (string.Equals(type, "channel.channel_points_custom_reward_redemption.add", StringComparison.OrdinalIgnoreCase))
         {
-            var rewardId = eventData.GetProperty("reward").GetProperty("id").GetString() ?? string.Empty;
+            var reward = eventData.GetProperty("reward");
+            var rewardId = reward.GetProperty("id").GetString() ?? string.Empty;
+            var rewardTitle = reward.TryGetProperty("title", out var titleProperty) ? titleProperty.GetString() : null;
+            _logService.LogInfo($"Reward redeemed: {rewardTitle ?? "(untitled)"} ({rewardId}).");
             RewardRedeemed?.Invoke(this, rewardId);
             return;
         }
 
-        if (string.Equals(type, "channel.cheer", StringComparison.OrdinalIgnoreCase))
+        // channel.cheer is no longer subscribed, but stays parsed so the Twitch CLI
+        // "twitch event trigger cheer" debug workflow keeps working.
+        if (string.Equals(type, "channel.bits.use", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(type, "channel.cheer", StringComparison.OrdinalIgnoreCase))
         {
             if (eventData.TryGetProperty("bits", out var bitsProperty)
                 && bitsProperty.ValueKind == JsonValueKind.Number)
             {
-                BitsCheered?.Invoke(this, bitsProperty.GetInt32());
+                var bits = bitsProperty.GetInt32();
+                var source = eventData.TryGetProperty("type", out var sourceProperty)
+                    && sourceProperty.ValueKind == JsonValueKind.String
+                        ? sourceProperty.GetString()
+                        : "cheer";
+                _logService.LogInfo($"Bits received: {bits} ({source}).");
+                BitsCheered?.Invoke(this, bits);
+            }
+            else
+            {
+                _logService.LogWarning($"{type} event had no numeric bits field.");
             }
 
             return;
@@ -657,6 +780,7 @@ public sealed class TwitchClient : ITwitchClient
         if (string.Equals(type, "channel.poll.end", StringComparison.OrdinalIgnoreCase))
         {
             var winner = GetPollWinner(eventData);
+            _logService.LogInfo($"Poll ended, winner: {winner ?? "(none)"}.");
             if (!string.IsNullOrWhiteSpace(winner))
             {
                 PollEnded?.Invoke(this, winner);
@@ -689,40 +813,89 @@ public sealed class TwitchClient : ITwitchClient
         return winnerTitle;
     }
 
-    private async Task ReconnectEventSubAsync(TwitchToken token, string reconnectUrl)
+    private async Task ReconnectEventSubAsync(string reconnectUrl)
     {
         try
         {
             _cts?.Cancel();
-            _cts = new CancellationTokenSource();
+            var cts = new CancellationTokenSource();
+            _cts = cts;
             _socket?.Dispose();
-            _socket = new ClientWebSocket();
-            await _socket.ConnectAsync(new Uri(reconnectUrl), _cts.Token);
+            var socket = new ClientWebSocket();
+            _socket = socket;
+            await socket.ConnectAsync(new Uri(reconnectUrl), cts.Token);
             _reconnectDelaySeconds = 2;
-            _ = Task.Run(() => ReceiveEventSubLoopAsync(token, _socket, _cts.Token));
+            _ = Task.Run(() => ReceiveEventSubLoopAsync(socket, cts.Token));
         }
-        catch
+        catch (Exception ex)
         {
-            await ScheduleReconnectAsync(token);
+            _logService.LogError("EventSub reconnect URL failed; starting a fresh connection.", ex);
+            await ScheduleReconnectAsync();
         }
     }
 
-    private async Task ScheduleReconnectAsync(TwitchToken token)
+    // Retries with backoff until a connect sticks or a manual connect/disconnect
+    // cancels _cts. It used to try once, so a single failed attempt (e.g. Wi-Fi
+    // still down) ended reconnects for the rest of the stream.
+    private async Task ScheduleReconnectAsync()
     {
-        if (_cts is null || _cts.IsCancellationRequested)
+        while (_cts is { IsCancellationRequested: false } current)
         {
-            return;
-        }
+            var delay = TimeSpan.FromSeconds(_reconnectDelaySeconds);
+            _reconnectDelaySeconds = Math.Min(_reconnectDelaySeconds * 2, 60);
+            _logService.LogInfo($"EventSub reconnecting in {delay.TotalSeconds:0}s.");
+            try
+            {
+                await Task.Delay(delay, current.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
 
-        var delay = TimeSpan.FromSeconds(_reconnectDelaySeconds);
-        _reconnectDelaySeconds = Math.Min(_reconnectDelaySeconds * 2, 60);
-        await Task.Delay(delay, _cts.Token);
-        if (_cts.IsCancellationRequested)
+            try
+            {
+                await ConnectEventSubAsync();
+                return;
+            }
+            catch (Exception ex)
+            {
+                _logService.LogError("EventSub reconnect failed.", ex);
+                StatusChanged?.Invoke(this, $"Twitch disconnected: {ex.Message}");
+            }
+        }
+    }
+
+    // EventSub delivers at least once, so the same notification can arrive twice
+    // (e.g. around a reconnect); applying it again would add the time twice.
+    // The set outlives individual sockets on purpose.
+    private bool TryMarkMessageSeen(string messageId)
+    {
+        lock (_seenMessagesGate)
         {
-            return;
-        }
+            if (!_seenMessageIds.Add(messageId))
+            {
+                return false;
+            }
 
-        await ConnectEventSubAsync(token);
+            _seenMessageOrder.Enqueue(messageId);
+            if (_seenMessageOrder.Count > MaxRememberedMessageIds)
+            {
+                _seenMessageIds.Remove(_seenMessageOrder.Dequeue());
+            }
+
+            return true;
+        }
+    }
+
+    private bool IsLoopbackEventSub()
+    {
+        return Uri.TryCreate(_eventSubWebSocketUrl, UriKind.Absolute, out var uri) && uri.IsLoopback;
+    }
+
+    private static string Truncate(string text)
+    {
+        return text.Length <= MaxLoggedBodyChars ? text : text[..MaxLoggedBodyChars] + "...";
     }
 
     private const string TokenKey = "JohnnyTimerEventSubWPF.TwitchToken";

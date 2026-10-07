@@ -8,9 +8,9 @@ public sealed record TwitchBitsMapping(
 {
     public string Display => Target switch
     {
-        TwitchRewardTarget.Countdown => $"Bits {Bits}: Countdown {Amount:+#;-#;0} mins",
-        TwitchRewardTarget.Counter => $"Bits {Bits}: Counter {FormatCounterAction(Action, Amount)}",
-        _ => $"Bits {Bits}"
+        TwitchRewardTarget.Countdown => $"Bits {Bits}+: Countdown {Amount:+#;-#;0} mins",
+        TwitchRewardTarget.Counter => $"Bits {Bits}+: Counter {FormatCounterAction(Action, Amount)}",
+        _ => $"Bits {Bits}+"
     };
 
     private static string FormatCounterAction(TwitchRewardAction action, int amount)

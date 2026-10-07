@@ -34,6 +34,8 @@ public sealed class BitsMappingService : IBitsMappingService
                 _mappings.Add(mapping);
             }
         }
+
+        _mappings.Sort((left, right) => left.Bits.CompareTo(right.Bits));
     }
 
     public void RemoveMapping(TwitchBitsMapping mapping)
@@ -41,8 +43,10 @@ public sealed class BitsMappingService : IBitsMappingService
         _mappings.Remove(mapping);
     }
 
+    // Threshold match: the highest mapping at or below the amount wins, so with
+    // 100 and 500 configured a 250-bit cheer hits 100 and a 600-bit one hits 500.
     public TwitchBitsMapping? TryGetMapping(int bits)
     {
-        return _mappings.FirstOrDefault(item => item.Bits == bits);
+        return _mappings.Where(item => item.Bits <= bits).MaxBy(item => item.Bits);
     }
 }

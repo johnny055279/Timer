@@ -6,6 +6,7 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using Timer.Application.Interfaces;
 using Timer.Application.Services;
+using Timer.Infrastructure.Logging;
 using Timer.Infrastructure.Security;
 using Timer.Infrastructure.Settings;
 using Timer.Infrastructure.Twitch;
@@ -37,6 +38,7 @@ public partial class MainWindow : Window
     private readonly ITwitchClient _twitchClient;
     private readonly IAppSettingsStore _settingsStore;
     private readonly ILogService _logService;
+    private readonly ILogUploader _logUploader;
     private DebugLogWindow? _debugWindow;
     private TwitchWindow? _twitchWindow;
     private bool _isLoadingTitle;
@@ -69,12 +71,16 @@ public partial class MainWindow : Window
             eventSubUrl = DebugEventSubWebSocketUrl;
         }
 #endif
+        var httpClient = new System.Net.Http.HttpClient();
+        _logService = new FileLogService();
+        _logUploader = new LokiLogUploader(httpClient);
+        _logService.LogInfo($"Timer {typeof(MainWindow).Assembly.GetName().Version?.ToString(3)} started on {Environment.OSVersion} (UTC{DateTimeOffset.Now:zzz}).");
         _twitchClient = new TwitchClient(
             TwitchClientId,
-            new System.Net.Http.HttpClient(),
+            httpClient,
             new WindowsCredentialStore(),
+            _logService,
             eventSubUrl);
-        _logService = new InMemoryLogService();
 
         _twitchClient.RewardRedeemed += (_, rewardId) => Dispatcher.Invoke(() => ApplyRewardAdjustment(rewardId));
         _twitchClient.BitsCheered += (_, bits) => Dispatcher.Invoke(() => ApplyBitsAdjustment(bits));

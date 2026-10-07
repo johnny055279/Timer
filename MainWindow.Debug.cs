@@ -27,7 +27,7 @@ public partial class MainWindow
     {
         if (_debugWindow is null || !_debugWindow.IsVisible)
         {
-            _debugWindow = new DebugLogWindow { Owner = this };
+            _debugWindow = new DebugLogWindow(_logService, _logUploader) { Owner = this };
             _debugWindow.SetLog(_logService.GetLog());
             _debugWindow.Closed += (_, _) => _debugWindow = null;
             _debugWindow.Show();

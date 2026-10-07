@@ -166,6 +166,9 @@
                             Margin="0,0,0,12">
                         <StackPanel>
                             <TextBlock Text="Bits (小奇點)" FontWeight="SemiBold" Margin="0,0,0,6" />
+                            <TextBlock Text="Uses the highest mapping at or below the bits used, including Power-ups. (達到設定數量即觸發，取不超過斗內數量的最高一筆，Power-ups 也算)"
+                                       Foreground="#6C757D"
+                                       TextWrapping="Wrap" />
                             <Grid Margin="0,8,0,0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="110" />
@@ -175,7 +178,7 @@
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
-                                <TextBlock Text="Bits amount (小奇點數)" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" />
+                                <TextBlock Text="Min bits (最低小奇點)" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" />
                                 <StackPanel Grid.Row="0" Grid.Column="1">
                                     <WrapPanel HorizontalAlignment="Left">
                                     <TextBox x:Name="TwitchBitsAmountTextBox"
